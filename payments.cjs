@@ -273,7 +273,12 @@ const f = async () => {
 
   console.log({ insertPaymentHandlerId: insertPaymentHandlerId });
 
-  const payHandlerFn = async ({ deep, data: { newLink } }) => {
+  const payHandlerFn = `async ({ deep, data: { newLink } }) => {
+    // const crypto = require('crypto');
+    // const crypto = require('node:crypto');
+
+    import crypto from 'node:crypto';
+
     const errorsConverter = {
       7:  'Покупатель не найден',
       53: 'Обратитесь к продавцу',
@@ -332,14 +337,12 @@ const f = async () => {
     };
     
     const getError = errorCode => errorCode === '0' ? undefined : (errorsConverter[errorCode] || 'broken');
-    // const crypto = require('crypto');
-    // const crypto = require('node:crypto');
 
     const _generateToken = (dataWithPassword) => {
       const dataString = Object.keys(dataWithPassword)
         .sort((a, b) => a.localeCompare(b))
         .map(key => dataWithPassword[key])
-        .reduce((acc, item) => `${acc}${item}`, '');
+        .reduce((acc, item) => 'acc+item', '');
       const hash = crypto
         .createHash('sha256')
         .update(dataString)
@@ -451,6 +454,7 @@ const f = async () => {
     console.log(result);
     return result;
   };
+  ;`
 
   const { data: [{ id: insertPayHandlerId }] } = await deep.insert({
     type_id: SyncTextFile,
@@ -475,7 +479,7 @@ const f = async () => {
         }] },
       }] },
     }] },
-    string: { data: { value: payHandlerFn.toString() } },
+    string: { data: { value: payHandlerFn } }, // payHandlerFn.toString()
   });
 
   console.log({ insertPayHandlerId: insertPayHandlerId });
