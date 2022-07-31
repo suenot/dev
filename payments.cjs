@@ -42,6 +42,7 @@ const f = async () => {
   const Tree = await deep.id('@deep-foundation/core', 'Tree');
   const TreeIncludeNode = await deep.id('@deep-foundation/core', 'TreeIncludeNode');
   const TreeIncludeUp = await deep.id('@deep-foundation/core', 'TreeIncludeUp');
+  const TreeIncludeDown = await deep.id('@deep-foundation/core', 'TreeIncludeDown');
   const TreeIncludeFromCurrent = await deep.id('@deep-foundation/core', 'TreeIncludeFromCurrent');
 
   const Rule = await deep.id('@deep-foundation/core', 'Rule');
@@ -58,6 +59,7 @@ const f = async () => {
   const SelectorFilter = await deep.id('@deep-foundation/core', 'SelectorFilter');
   const BoolExp = await deep.id('@deep-foundation/core', 'BoolExp');
   const usersId = await deep.id('deep', 'users');
+  const user1 = deep.linkId;
 
   const { data: [{ id: packageId }] } = await deep.insert({
     type_id: Package,
@@ -65,7 +67,7 @@ const f = async () => {
     in: { data: [
       {
         type_id: Contain,
-        from_id: deep.linkId
+        from_id: user1
       },
     ] },
     out: { data: [
@@ -82,6 +84,32 @@ const f = async () => {
 
   console.log({ packageId });
 
+  const { data: [{ id: PSumProvider }] } = await deep.insert({
+    type_id: Type,
+    from_id: Any,
+    to_id: Any,
+    in: { data: {
+      type_id: Contain,
+      from_id: packageId,
+      string: { data: { value: 'SumProvider' } },
+    } },
+  });
+
+  console.log({ PSumProvider: PSumProvider });
+
+  const { data: [{ id: PTinkoffProvider }] } = await deep.insert({
+    type_id: Type,
+    from_id: Any,
+    to_id: Any,
+    in: { data: {
+      type_id: Contain,
+      from_id: packageId,
+      string: { data: { value: 'TinkoffProvider' } },
+    } },
+  });
+
+  console.log({ PTinkoffProvider: PTinkoffProvider });
+
   const { data: [{ id: PPayment }] } = await deep.insert({
     type_id: Type,
     from_id: Any,
@@ -97,7 +125,7 @@ const f = async () => {
 
   const { data: [{ id: PObject }] } = await deep.insert({
     type_id: Type,
-    from_id: Any,
+    from_id: PPayment,
     to_id: Any,
     in: { data: {
       type_id: Contain,
@@ -110,11 +138,11 @@ const f = async () => {
 
   const { data: [{ id: PSum }] } = await deep.insert({
     type_id: Type,
-    from_id: Any,
-    to_id: Any,
+    from_id: PSumProvider,
+    to_id: Any, // TODO: когда появится OR
     in: { data: {
       type_id: Contain,
-      from_id: packageId, // before created package
+      from_id: packageId,
       string: { data: { value: 'Sum' } },
     } },
   });
@@ -124,10 +152,10 @@ const f = async () => {
   const { data: [{ id: PPay }] } = await deep.insert({
     type_id: Type,
     from_id: Any,
-    to_id: Any,
+    to_id: PSum,
     in: { data: {
       type_id: Contain,
-      from_id: packageId, // before created package
+      from_id: packageId,
       string: { data: { value: 'Pay' } },
     } },
   });
@@ -136,11 +164,11 @@ const f = async () => {
 
   const { data: [{ id: PUrl }] } = await deep.insert({
     type_id: Type,
-    from_id: Any,
-    to_id: Any,
+    from_id: PTinkoffProvider,
+    to_id: PPay,
     in: { data: {
       type_id: Contain,
-      from_id: packageId, // before created package
+      from_id: packageId,
       string: { data: { value: 'Url' } },
     } },
   });
@@ -149,11 +177,11 @@ const f = async () => {
 
   const { data: [{ id: PPayed }] } = await deep.insert({
     type_id: Type,
-    from_id: Any,
+    from_id: PTinkoffProvider,
     to_id: Any,
     in: { data: {
       type_id: Contain,
-      from_id: packageId, // before created package
+      from_id: packageId,
       string: { data: { value: 'Payed' } },
     } },
   });
@@ -162,47 +190,354 @@ const f = async () => {
 
   const { data: [{ id: PError }] } = await deep.insert({
     type_id: Type,
-    from_id: Any,
+    from_id: PTinkoffProvider,
     to_id: Any,
     in: { data: {
       type_id: Contain,
-      from_id: packageId, // before created package
+      from_id: packageId,
       string: { data: { value: 'Error' } },
     } },
   });
 
   console.log({ PError: PError });
 
-  const { data: [{ id: insertHandlerId }] } = await deep.insert({
+  const { data: [{ id: paymentTree }] } = await deep.insert({
+    type_id: Tree,
+    in: { data: {
+      type_id: Contain,
+      from_id: packageId,
+      string: { data: { value: 'paymentTree' } },
+    } },
+    out: { data: [
+      {
+        type_id: TreeIncludeNode,
+        to_id: PPayment
+      },
+      {
+        type_id: TreeIncludeDown,
+        to_id: PObject
+      },
+      {
+        type_id: TreeIncludeUp,
+        to_id: PSum
+      },
+      {
+        type_id: TreeIncludeUp,
+        to_id: PPay
+      },
+      {
+        type_id: TreeIncludeUp,
+        to_id: PUrl
+      },
+      {
+        type_id: TreeIncludeUp,
+        to_id: PPayed
+      },
+      {
+        type_id: TreeIncludeUp,
+        to_id: PError
+      },
+    ] },
+  });
+
+  console.log({ paymentTree: paymentTree });
+
+  const { data: [{ id: insertPaymentHandlerId }] } = await deep.insert({
     type_id: SyncTextFile,
     in: { data: [{
       type_id: Contain,
-      from_id: packageId, // before created package
+      from_id: packageId,
+      string: { data: { value: 'paymentInsertHandlerFile' } },
+    }, {
+      from_id: dockerSupportsJs,
+      type_id: Handler,
+      in: { data: [{
+        type_id: Contain,
+        from_id: packageId,
+        string: { data: { value: 'paymentInsertHandler' } },
+      }, {
+        type_id: HandleInsert,
+        from_id: PPayment,
+        in: { data: [{
+          type_id: Contain,
+          from_id: packageId,
+          string: { data: { value: 'paymentInsertHandle' } },
+        }] },
+      }] },
+    }] },
+    string: { data: { value: `async ({ deep, data: { newLink } }) => {
+      console.log('hello world');
+      return {'some': 'some'};
+    }` } },
+  });
+
+  console.log({ insertPaymentHandlerId: insertPaymentHandlerId });
+
+  const payHandlerFn = async ({ deep, data: { newLink } }) => {
+    const errorsConverter = {
+      7:  'Покупатель не найден',
+      53: 'Обратитесь к продавцу',
+      99: 'Платеж отклонен',
+      100:  'Повторите попытку позже',
+      101:  'Не пройдена идентификация 3DS',
+      102:  'Операция отклонена, пожалуйста обратитесь в интернет-магазин или воспользуйтесь другой картой',
+      103:  'Повторите попытку позже',
+      119:  'Превышено кол-во запросов на авторизацию',
+      191:  'Некорректный статус договора, обратитесь к вашему менеджеру',
+      1001: 'Свяжитесь с банком, выпустившим карту, чтобы провести платеж',
+      1003: 'Неверный merchant ID',
+      1004: 'Карта украдена. Свяжитесь с банком, выпустившим карту',
+      1005: 'Платеж отклонен банком, выпустившим карту',
+      1006: 'Свяжитесь с банком, выпустившим карту, чтобы провести платеж',
+      1007: 'Карта украдена. Свяжитесь с банком, выпустившим карту',
+      1008: 'Платеж отклонен, необходима идентификация',
+      1012: 'Такие операции запрещены для этой карты',
+      1013: 'Повторите попытку позже',
+      1014: 'Карта недействительна. Свяжитесь с банком, выпустившим карту',
+      1015: 'Попробуйте снова или свяжитесь с банком, выпустившим карту',
+      1019: 'Платеж отклонен — попробуйте снова',
+      1030: 'Повторите попытку позже',
+      1033: 'Истек срок действия карты. Свяжитесь с банком, выпустившим карту',
+      1034: 'Попробуйте повторить попытку позже',
+      1038: 'Превышено количество попыток ввода ПИН-кода',
+      1039: 'Платеж отклонен — счет не найден',
+      1041: 'Карта утеряна. Свяжитесь с банком, выпустившим карту',
+      1043: 'Карта украдена. Свяжитесь с банком, выпустившим карту',
+      1051: 'Недостаточно средств на карте',
+      1053: 'Платеж отклонен — счет не найден',
+      1054: 'Истек срок действия карты',
+      1055: 'Неверный ПИН',
+      1057: 'Такие операции запрещены для этой карты',
+      1058: 'Такие операции запрещены для этой карты',
+      1059: 'Подозрение в мошенничестве. Свяжитесь с банком, выпустившим карту',
+      1061: 'Превышен дневной лимит платежей по карте',
+      1062: 'Платежи по карте ограничены',
+      1063: 'Операции по карте ограничены',
+      1064: 'Проверьте сумму',
+      1065: 'Превышен дневной лимит транзакций',
+      1075: 'Превышено число попыток ввода ПИН-кода',
+      1076: 'Платеж отклонен — попробуйте снова',
+      1077: 'Коды не совпадают — попробуйте снова',
+      1080: 'Неверный срок действия',
+      1082: 'Неверный CVV',
+      1086: 'Платеж отклонен — не получилось подтвердить ПИН-код',
+      1088: 'Ошибка шифрования. Попробуйте снова',
+      1089: 'Попробуйте повторить попытку позже',
+      1091: 'Банк, выпустивший карту недоступен для проведения авторизации',
+      1092: 'Платеж отклонен — попробуйте снова',
+      1093: 'Подозрение в мошенничестве. Свяжитесь с банком, выпустившим карту',
+      1094: 'Системная ошибка',
+      1096: 'Повторите попытку позже',
+      9999: 'Внутренняя ошибка системы',
+    };
+    
+    const getError = errorCode => errorCode === '0' ? undefined : (errorsConverter[errorCode] || 'broken');
+    // const crypto = require('crypto');
+    // const crypto = require('node:crypto');
+
+    const _generateToken = (dataWithPassword) => {
+      const dataString = Object.keys(dataWithPassword)
+        .sort((a, b) => a.localeCompare(b))
+        .map(key => dataWithPassword[key])
+        .reduce((acc, item) => `${acc}${item}`, '');
+      const hash = crypto
+        .createHash('sha256')
+        .update(dataString)
+        .digest('hex');
+      return hash;
+    };
+    
+    const generateToken = (data) => {
+      const { Receipt, DATA, Shops, ...restData } = data;
+      const dataWithPassword = { ...restData, Password: process.env.PAYMENT_EACQ_TERMINAL_PASSWORD };
+      return _generateToken(dataWithPassword);
+    };
+
+    const initEACQ = async (options) => {
+      try {
+        const response = await axios({
+          method: 'post',
+          url: getUrl('Init'),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          data: options,
+        });
+    
+        const error = getError(response.data.ErrorCode);
+    
+        const d = {
+          error,
+          request: options,
+          response: response.data,
+        };
+        debug(d);
+        options?.log && options.log(d);
+    
+        return {
+          error,
+          request: options,
+          response: response.data,
+        };
+      } catch (error) {
+        return {
+          error,
+          request: options,
+          response: null,
+        };
+      }
+    };
+
+    const paymentTree = await deep.id('@deep-foundation/payments', 'paymentTree');
+    const { data: mp1 }  = await deep.select({
+      _by_path_item: { item_id: { _eq: newLink.id }, group_id: { _eq: paymentTree } },
+    })
+    const OrderId = mp1[0].id; // payment1
+    const Amount = mp1[1].value // sum1
+    const CustomerKey = newLink.from_id; // user1
+
+    const noTokenData = {
+      TerminalKey: process.env.PAYMENT_EACQ_TERMINAL_KEY,
+      Amount: 3000,
+      Shops: [{ ShopCode: 481488, Amount: 3000, Fee: 210 }],
+      CustomerKey,
+      NotificationURL: process.env.PAYMENT_NOTIFICATION_URL,
+      Receipt: {
+        Items: [{
+          Name: OrderId,
+          Price: Amount, // TODO
+          Quantity: 1, // TODO
+          Amount: Amount, // TODO
+          PaymentMethod: 'prepayment',
+          PaymentObject: 'service',
+          Tax: 'none',
+        }],
+        Phone: process.env.PAYMENT_TEST_PHONE,
+        Taxation: 'usn_income',
+      },
+    };
+
+    const initData = {
+      ...noTokenData,
+      OrderId,
+      // Description: itemName,
+      CustomerKey,
+      PayType: 'O',
+      Token: generateToken(noTokenData),
+      SuccessURL: SUCCESS_URL_REDIRECT,
+      FailURL: FAIL_URL_REDIRECT,
+      shops: [{ ShopCode: '481488', Amount: 3000, Fee: 210 }],
+      log: json => log(json),
+    };
+
+    const initResult = await initEACQ(initData);
+
+    console.log({ initResult: initResult });
+    
+    // TODO: ошибку получения url тоже стоит записать
+    const { data: [{ id: url1 }] } = await deep.insert({
+      type_id: PUrl,
+      string: { data: { value: initResult?.response?.PaymentURL || initResult?.error || 'error' } },
+    });
+
+    const result = {
+      OrderId,
+      CustomerKey,
+      Amount,
+      initData,
+      initResult,
+      url1,
+    };
+    console.log(result);
+    return result;
+  };
+
+  const { data: [{ id: insertPayHandlerId }] } = await deep.insert({
+    type_id: SyncTextFile,
+    in: { data: [{
+      type_id: Contain,
+      from_id: packageId,
       string: { data: { value: 'payInsertHandlerFile' } },
     }, {
       from_id: dockerSupportsJs,
       type_id: Handler,
       in: { data: [{
         type_id: Contain,
-        from_id: packageId, // before created package
+        from_id: packageId,
         string: { data: { value: 'payInsertHandler' } },
       }, {
         type_id: HandleInsert,
         from_id: PPay,
         in: { data: [{
           type_id: Contain,
-          from_id: packageId, // before created package
+          from_id: packageId,
           string: { data: { value: 'payInsertHandle' } },
         }] },
       }] },
     }] },
-    string: { data: { value: `
-      console.log('hello world');
-      return {};
-    ` } },
+    string: { data: { value: payHandlerFn.toString() } },
   });
 
-  console.log({ insertHandlerId });
+  console.log({ insertPayHandlerId: insertPayHandlerId });
+
+  // SEED DATA
+
+  const { data: [{ id: sumProvider1 }] } = await deep.insert({
+    type_id: PSumProvider,
+  });
+
+  console.log({ sumProvider1: sumProvider1 });
+
+  const { data: [{ id: tinkoffProvider1 }] } = await deep.insert({
+    type_id: PTinkoffProvider,
+  });
+
+  console.log({ tinkoffProvider1: tinkoffProvider1 });
+
+  const { data: [{ id: payment1 }] } = await deep.insert({
+    type_id: PPayment,
+  });
+
+  console.log({ payment1: payment1 });
+
+  const { data: [{ id: sum1 }] } = await deep.insert({
+    type_id: PSum,
+    from_id: sumProvider1,
+    to_id: payment1,
+    number: { data: { value: 3000 } },
+  });
+
+  console.log({ sum1: sum1 });
+
+  const { data: [{ id: pay1 }] } = await deep.insert({
+    type_id: PPay,
+    from_id: user1,
+    to_id: sum1,
+  });
+
+  console.log({ pay1: pay1 });
+
+  // up
+  const { data: mp1 }  = await deep.select({
+    _by_path_item: { item_id: { _eq: pay1 }, group_id: { _eq: paymentTree } },
+  })
+
+  console.log({ mp1: mp1 });
+
+  // down
+  const { data: mp2 }  = await deep.select({
+    _by_item: { path_item_id: { _eq: pay1 }, group_id: { _eq: paymentTree } },
+  })
+
+  console.log({ mp2: mp2 });
+
+  // down from payment
+  const { data: mp3 }  = await deep.select({
+    _by_item: { path_item_id: { _eq: payment1 }, group_id: { _eq: paymentTree } },
+  })
+
+  console.log({ mp3: mp3 });
+  
 };
 
 f();
