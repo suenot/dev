@@ -456,12 +456,11 @@ const f = async () => {
 
     console.log({ initResult: initResult });
     
-    // TODO: ошибку получения url тоже стоит записать
     const { data: [{ id: url1 }] } = await deep.insert({
       type_id: await deep.id('@deep-foundation/payments', 'Url'),
       from_id: tinkoffProvider1,
       to_id: newLink.id,
-      string: { data: { value: initResult?.response?.PaymentURL || initResult?.error || 'error' } }, // TODO: может писать в object { success, error}?
+      json: { data: { value: initResult?.response } }, // теперь пишу весь ответ из тинькова, чтобы обрабатывать и ошибки
     });
 
     console.log({ url1: url1 });
