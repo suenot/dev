@@ -2,6 +2,7 @@ require('react');
 require('graphql');
 require('lodash');
 require('subscriptions-transport-ws');
+require('dotenv').config();
 
 const { generateApolloClient } = require("@deep-foundation/hasura/client");
 const { DeepClient } = require('@deep-foundation/deeplinks/imports/client');
@@ -273,11 +274,9 @@ const f = async () => {
 
   console.log({ insertPaymentHandlerId: insertPaymentHandlerId });
 
-  const payHandlerFn = `async ({ deep, data: { newLink } }) => {
-    // const crypto = require('crypto');
-    // const crypto = require('node:crypto');
-
-    import crypto from 'node:crypto';
+  const payHandlerFn = async ({ deep, require, data: { newLink } }) => {
+    const crypto = require('crypto');
+    const axios = require('axios');
 
     const errorsConverter = {
       7:  'Покупатель не найден',
@@ -338,6 +337,8 @@ const f = async () => {
     
     const getError = errorCode => errorCode === '0' ? undefined : (errorsConverter[errorCode] || 'broken');
 
+    const getUrl = method => `${process.env.PAYMENT_EACQ_AND_TEST_URL}/${method}`;
+
     const _generateToken = (dataWithPassword) => {
       const dataString = Object.keys(dataWithPassword)
         .sort((a, b) => a.localeCompare(b))
@@ -374,7 +375,7 @@ const f = async () => {
           request: options,
           response: response.data,
         };
-        debug(d);
+        // debug(d);
         options?.log && options.log(d);
     
         return {
@@ -391,18 +392,18 @@ const f = async () => {
       }
     };
 
-    const paymentTree = await deep.id('@deep-foundation/payments', 'paymentTree');
     const { data: mp1 }  = await deep.select({
-      _by_path_item: { item_id: { _eq: newLink.id }, group_id: { _eq: paymentTree } },
+      _by_path_item: { item_id: { _eq: newLink.id }, group_id: { _eq: await deep.id('@deep-foundation/payments', 'paymentTree') } },
     })
-    const OrderId = mp1[0].id; // payment1
-    const Amount = mp1[1].value // sum1
-    const CustomerKey = newLink.from_id; // user1
+    const OrderId = (mp1[0].id).toString(); // payment1
+    console.log('mp1', mp1[1]);
+    const Amount = mp1[1].value.value // sum1
+    const CustomerKey = (newLink.from_id).toString(); // user1
 
     const noTokenData = {
       TerminalKey: process.env.PAYMENT_EACQ_TERMINAL_KEY,
-      Amount: 3000,
-      Shops: [{ ShopCode: 481488, Amount: 3000, Fee: 210 }],
+      Amount: Amount,
+      Shops: [{ ShopCode: 481488, Amount: Amount, Fee: 210 }],
       CustomerKey,
       NotificationURL: process.env.PAYMENT_NOTIFICATION_URL,
       Receipt: {
@@ -420,6 +421,8 @@ const f = async () => {
       },
     };
 
+    console.log({ noTokenData: noTokenData });
+
     const initData = {
       ...noTokenData,
       OrderId,
@@ -427,11 +430,13 @@ const f = async () => {
       CustomerKey,
       PayType: 'O',
       Token: generateToken(noTokenData),
-      SuccessURL: SUCCESS_URL_REDIRECT,
-      FailURL: FAIL_URL_REDIRECT,
-      shops: [{ ShopCode: '481488', Amount: 3000, Fee: 210 }],
-      log: json => log(json),
+      SuccessURL: process.env.SUCCESS_URL_REDIRECT,
+      FailURL: process.env.FAIL_URL_REDIRECT,
+      shops: [{ ShopCode: '481488', Amount: Amount, Fee: 210 }],
+      // log: json => log(json),
     };
+
+    console.log({ initData: initData });
 
     const initResult = await initEACQ(initData);
 
@@ -439,22 +444,24 @@ const f = async () => {
     
     // TODO: ошибку получения url тоже стоит записать
     const { data: [{ id: url1 }] } = await deep.insert({
-      type_id: PUrl,
-      string: { data: { value: initResult?.response?.PaymentURL || initResult?.error || 'error' } },
+      type_id: await deep.id('@deep-foundation/payments', 'Url'),
+      // string: { data: { value: initResult?.response?.PaymentURL || initResult?.error || 'error' } },
+      string: { data: { value: 'some_url' } },
     });
+
+    console.log({ url1: url1 });
 
     const result = {
       OrderId,
       CustomerKey,
       Amount,
-      initData,
+      // initData,
       initResult,
       url1,
     };
     console.log(result);
     return result;
   };
-  ;`
 
   const { data: [{ id: insertPayHandlerId }] } = await deep.insert({
     type_id: SyncTextFile,
@@ -479,7 +486,18 @@ const f = async () => {
         }] },
       }] },
     }] },
-    string: { data: { value: payHandlerFn } }, // payHandlerFn.toString()
+    string: { data: {
+      value: payHandlerFn
+        .toString()
+        .replace('process.env.PAYMENT_TEST_TERMINAL_KEY', `'${process.env?.PAYMENT_TEST_TERMINAL_KEY}'`)
+        .replace('process.env.PAYMENT_EACQ_TERMINAL_KEY', `'${process.env?.PAYMENT_EACQ_TERMINAL_KEY}'`)
+        .replace('process.env.PAYMENT_NOTIFICATION_URL', `'${process.env?.PAYMENT_NOTIFICATION_URL}'`)
+        .replace('process.env.PAYMENT_TEST_PHONE', `'${process.env?.PAYMENT_TEST_PHONE}'`)
+        .replace('process.env.PAYMENT_EACQ_TERMINAL_PASSWORD', `'${process.env?.PAYMENT_EACQ_TERMINAL_PASSWORD}'`)
+        .replace('process.env.PAYMENT_EACQ_AND_TEST_URL', `'${process.env?.PAYMENT_EACQ_AND_TEST_URL}'`)
+        .replace('process.env.SUCCESS_URL_REDIRECT', `'${process.env?.SUCCESS_URL_REDIRECT}'`)
+        .replace('process.env.FAIL_URL_REDIRECT', `'${process.env?.FAIL_URL_REDIRECT}'`)
+    } },
   });
 
   console.log({ insertPayHandlerId: insertPayHandlerId });
