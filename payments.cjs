@@ -202,6 +202,20 @@ const f = async () => {
 
   console.log({ PError: PError });
 
+  // SEED PROVIDERS
+  const { data: [{ id: sumProvider1 }] } = await deep.insert({
+    type_id: PSumProvider,
+  });
+
+  console.log({ sumProvider1: sumProvider1 });
+
+  const { data: [{ id: tinkoffProvider1 }] } = await deep.insert({
+    type_id: PTinkoffProvider,
+  });
+
+  console.log({ tinkoffProvider1: tinkoffProvider1 });
+ //END SEED PROVIDERS
+
   const { data: [{ id: paymentTree }] } = await deep.insert({
     type_id: Tree,
     in: { data: {
@@ -215,7 +229,7 @@ const f = async () => {
         to_id: PPayment
       },
       {
-        type_id: TreeIncludeDown,
+        type_id: TreeIncludeUp, // TreeIncludeDown
         to_id: PObject
       },
       {
@@ -227,7 +241,7 @@ const f = async () => {
         to_id: PPay
       },
       {
-        type_id: TreeIncludeUp,
+        type_id: TreeIncludeUp, // TreeIncludeUp
         to_id: PUrl
       },
       {
@@ -445,8 +459,9 @@ const f = async () => {
     // TODO: ошибку получения url тоже стоит записать
     const { data: [{ id: url1 }] } = await deep.insert({
       type_id: await deep.id('@deep-foundation/payments', 'Url'),
-      // string: { data: { value: initResult?.response?.PaymentURL || initResult?.error || 'error' } },
-      string: { data: { value: 'some_url' } },
+      from_id: tinkoffProvider1,
+      to_id: newLink.id,
+      string: { data: { value: initResult?.response?.PaymentURL || initResult?.error || 'error' } }, // TODO: может писать в object { success, error}?
     });
 
     console.log({ url1: url1 });
@@ -456,7 +471,7 @@ const f = async () => {
       CustomerKey,
       Amount,
       // initData,
-      initResult,
+      // initResult,
       url1,
     };
     console.log(result);
@@ -497,24 +512,13 @@ const f = async () => {
         .replace('process.env.PAYMENT_EACQ_AND_TEST_URL', `'${process.env?.PAYMENT_EACQ_AND_TEST_URL}'`)
         .replace('process.env.SUCCESS_URL_REDIRECT', `'${process.env?.SUCCESS_URL_REDIRECT}'`)
         .replace('process.env.FAIL_URL_REDIRECT', `'${process.env?.FAIL_URL_REDIRECT}'`)
+        .replace('tinkoffProvider1', `'${tinkoffProvider1}'`)
     } },
   });
 
   console.log({ insertPayHandlerId: insertPayHandlerId });
 
   // SEED DATA
-
-  const { data: [{ id: sumProvider1 }] } = await deep.insert({
-    type_id: PSumProvider,
-  });
-
-  console.log({ sumProvider1: sumProvider1 });
-
-  const { data: [{ id: tinkoffProvider1 }] } = await deep.insert({
-    type_id: PTinkoffProvider,
-  });
-
-  console.log({ tinkoffProvider1: tinkoffProvider1 });
 
   const { data: [{ id: payment1 }] } = await deep.insert({
     type_id: PPayment,
@@ -559,6 +563,45 @@ const f = async () => {
   })
 
   console.log({ mp3: mp3 });
+
+  await delay(10000);
+
+  // up
+  const { data: mp4 }  = await deep.select({
+    _by_path_item: { item_id: { _eq: pay1 }, group_id: { _eq: paymentTree } },
+  })
+
+  console.log({ mp4: mp4 });
+
+  // down
+  const { data: mp5 }  = await deep.select({
+    _by_item: { path_item_id: { _eq: pay1 }, group_id: { _eq: paymentTree } },
+  })
+
+  console.log({ mp5: mp5 });
+
+  // down from payment
+  const { data: mp6 }  = await deep.select({
+    _by_item: { path_item_id: { _eq: payment1 }, group_id: { _eq: paymentTree } },
+  })
+  console.log({ mp6: mp6 });
+
+  // TODO: получить id Url
+
+  // await payInBrowser({
+  //   browser,
+  //   page,
+  //   url: initResult.response.PaymentURL,
+  // });
+
+  // const newConfirmData = {
+  //   TerminalKey: process.env.PAYMENT_EACQ_TERMINAL_KEY,
+  //   PaymentId: Number(initResult.response.PaymentId),
+  //   Shops: [{ ShopCode: 481488, Amount: 3000, Fee: 210 }],
+  // };
+
+  // const getStateEACQResult = await getStateEACQ(tokenize(newConfirmData));
+  // console.log('getStateEACQResult', getStateEACQResult);
   
 };
 
