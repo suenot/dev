@@ -61,7 +61,11 @@
     "enw": "npm run electron-next-build-windows",
     "pull-ci-apply": "(cd packages/hasura; git pull; npm ci); (cd packages/deeplinks; git pull; npm ci); (cd packages/deepcase; git pull; npm ci); (cd packages/deepcase/electron; npm ci); git pull && npm run apply-hasura && npm run apply-deeplinks",
     "nextjs": "(cd packages/nextjs; PORT=4000 npm run dev)",
-    "temp-messanger": "(export NEXT_PUBLIC_GQL_PATH=$(echo $(gp url 3006) | awk -F[/:] '{print $4}')/gql; node ./messanger.cjs)"
+    "temp-messanger": "(export NEXT_PUBLIC_GQL_PATH=$(echo $(gp url 3006) | awk -F[/:] '{print $4}')/gql; node ./messanger.cjs)",
+    "dev:snapshot": "cd packages/deeplinks && npm run snapshot:create",
+    "dev:payments": "cd packages/deeplinks && npm run snapshot:last && cd ../.. && (export NEXT_PUBLIC_GQL_PATH=$(echo $(gp url 3006) | awk -F[/:] '{print $4}')/gql; sleep 8; node ./payments.cjs)",
+    "dev:payments-eacq": "cd packages/deeplinks && npm run snapshot:last && cd ../.. && (export NEXT_PUBLIC_GQL_PATH=$(echo $(gp url 3006) | awk -F[/:] '{print $4}')/gql; sleep 8; node ./payment-eacq.cjs)",
+    "dev:payments-e2c": "cd packages/deeplinks && npm run snapshot:last && cd ../.. && (export NEXT_PUBLIC_GQL_PATH=$(echo $(gp url 3006) | awk -F[/:] '{print $4}')/gql; sleep 8; node ./payments-e2c.cjs)"
   },
   "repository": {
     "type": "git",
