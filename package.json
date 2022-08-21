@@ -62,7 +62,8 @@
     "enw": "npm run electron-next-build-windows",
     "pull-ci-apply": "(cd packages/hasura; git pull; npm ci); (cd packages/deeplinks; git pull; npm ci); (cd packages/deepcase; git pull; npm ci); (cd packages/deepcase/electron; npm ci); git pull && npm run apply-hasura && npm run apply-deeplinks",
     "nextjs": "(cd packages/nextjs; PORT=4000 npm run dev)",
-    "temp-messanger": "(export NEXT_PUBLIC_GQL_PATH=$(echo $(gp url 3006) | awk -F[/:] '{print $4}')/gql; node ./messanger.cjs)"
+    "temp-messanger": "(export NEXT_PUBLIC_GQL_PATH=$(echo $(gp url 3006) | awk -F[/:] '{print $4}')/gql; node ./messanger.cjs)",
+    "temp-payments-e2c": "clear; export NEXT_PUBLIC_GQL_PATH=$(echo $(gp url 3006) | awk -F[/:] '{print $4}')/gql; cd packages/deeplinks && npm run snapshot:last && cd ../..; sleep 5; node ./payments.cjs; node ./payments-e2c.cjs;"
   },
   "repository": {
     "type": "git",
@@ -82,6 +83,8 @@
     "minimist": "^1.2.5",
     "npm": "^7.5.4",
     "prompt": "^1.2.0",
+    "prompt-sync": "^4.2.0",
+    "puppeteer": "^16.2.0",
     "rimraf": "^3.0.2",
     "simple-git": "^2.45.0",
     "ts-node": "^9.1.1",
