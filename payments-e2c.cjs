@@ -28,7 +28,7 @@ const unloginedDeep = new DeepClient({ apolloClient });
 
 const delay = (time = 1000) => new Promise(res => setTimeout(res, time));
 
-const errorsConverter = {
+const errorsConverterEACQ = {
   7:  'Покупатель не найден',
   53: 'Обратитесь к продавцу',
   99: 'Платеж отклонен',
@@ -85,9 +85,94 @@ const errorsConverter = {
   9999: 'Внутренняя ошибка системы',
 };
 
-const getError = errorCode => errorCode === '0' ? undefined : (errorsConverter[errorCode] || 'broken');
+const errorsConverterE2C = {
+  99:	'Воспользуйтесь другой картой, банк, выпустивший карту, отклонил операцию',
+  101:	'Не пройдена идентификация 3DS',
+  191:	'Некорректный статус договора, обратитесь к вашему менеджеру',
+  604:	'Не получилось совершить платеж. Свяжитесь с поддержкой',
+  619:	'Отсутствуют обязательные данные отправителя',
+  620:	'Проверьте сумму — она не может быть равна 0.',
+  623:	'Выплата по этому заказу уже прошла',
+  632:	'Превышен лимит на сумму операции',
+  633:	'Превышен лимит на количество переводов в день по иностранным картам',
+  634:	'Превышен лимит на сумму переводов по номеру карты в месяц',
+  637:	'Не хватает данных получателя или отправителя для выплаты наиностранную карту. Проверьте заполнение',
+  642:	'Проверьте номер карты',
+  648:	'Не получилось пополнить карту. Свяжитесь с поддержкой',
+  650:	'Не получилось пополнить карту. Попробуйте позже',
+  651:	'Не получилось совершить платеж. Свяжитесь с поддержкой',
+  703:	'Не получилось пополнить карту. Попробуйте позже',
+  1006:	'Проверьте реквизиты или воспользуйтесь другой картой',
+  1012:	'Воспользуйтесь другой картой',
+  1013:	'Повторите попытку позже',
+  1014:	'Неверно введены реквизиты карты. Проверьте корректность введенных данных',
+  1030:	'Повторите попытку позже',
+  1033:	'Проверьте реквизиты или воспользуйтесь другой картой',
+  1034:	'Воспользуйтесь другой картой, банк, выпустивший карту, отклонил операцию',
+  1041:	'Воспользуйтесь другой картой, банк, выпустивший карту, отклонил операцию',
+  1043:	'Воспользуйтесь другой картой, банк, выпустивший карту, отклонил операцию',
+  1051:	'Недостаточно средств на карте',
+  1054:	'Проверьте реквизиты или воспользуйтесь другой картой',
+  1057:	'Воспользуйтесь другой картой, банк, выпустивший карту, отклонил операцию',
+  1065:	'Воспользуйтесь другой картой, банк, выпустивший карту, отклонил операцию',
+  1082:	'Проверьте реквизиты или воспользуйтесь другой картой',
+  1089:	'Воспользуйтесь другой картой, банк, выпустивший карту, отклонил операцию',
+  1091:	'Воспользуйтесь другой картой',
+  1096:	'Повторите попытку позже',
+  1502:	'Недостаточно средств на счете компании',
+  1503:	'Некорректный статус счета, обратитесь в поддержку',
+  9999:	'Внутренняя ошибка системы',
+};
 
-const getUrl = method => `${process.env.PAYMENT_EACQ_AND_TEST_URL}/${method}`;
+const getErrorEACQ = errorCode => errorCode === '0' ? undefined : (errorsConverterEACQ[errorCode] || 'broken');
+
+const getErrorE2C = errorCode => errorCode === '0' ? undefined : (errorsConverterE2C[errorCode] || 'broken');
+
+const getUrlEACQ = method => `${process.env.PAYMENT_EACQ_AND_TEST_URL}/${method}`;
+
+const getUrlE2C = method => `${process.env.PAYMENT_E2C_URL}/${method}`;
+
+// Добавление карты, на которую потом нужно делать выплату
+const addCardInBrowser = async ({ page, browser, url }) => {
+  await page.goto(url, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('#card-number__input');
+  await delay(300);
+  await page.type('#card-number__input', process.env.PAYMENT_E2C_CARD_NUMBER_SUCCESS); // card number
+  await delay(300);
+  await page.keyboard.press('Tab');
+  await delay(300);
+  await page.type('#card-expiration__input', process.env.PAYMENT_E2C_CARD_EXPDATE); // expired date
+  await delay(300);
+  await page.keyboard.press('Tab');
+  await delay(300);
+  const needToEnterCVC = await page.evaluate(() => {
+    return !!document.querySelector('#cvv__input1');
+  });
+  if (needToEnterCVC) {
+    console.log('NEED CVC!!!!!!!');
+    await page.type('#cvv__input1', process.env.PAYMENT_E2C_CARD_CVC[0]); // CVC code
+    await delay(300);
+    await page.keyboard.press('Tab');
+    await delay(300);
+    await page.type('#cvv__input2', process.env.PAYMENT_E2C_CARD_CVC[1]); // CVC code
+    await delay(300);
+    await page.keyboard.press('Tab');
+    await delay(300);
+    await page.type('#cvv__input3', process.env.PAYMENT_E2C_CARD_CVC[2]); // CVC code
+    await delay(3000);
+  } else {
+    console.log('NO NEED CVC!!!!!!!');
+  }
+  await delay(1000);
+  await page.keyboard.press('Tab');
+  await delay(2000);
+  await page.click('.form-submit button'); // submit button
+  await delay(3000);
+  // await delay(100);
+  // await page.close();
+  // await delay(100);
+  await browser.close();
+};
 
 const payInBrowser = async ({ page, browser, url }) => {
   await page.goto(url, { waitUntil: 'networkidle2' });
@@ -179,18 +264,21 @@ const payInBrowser = async ({ page, browser, url }) => {
   await browser.close();
 };
 
-const tokenize = (options) => {
-  return {
-    ...options,
-    Token: generateToken(options),
-  };
+const objectToFormData = (details) => {
+  const formBody = [];
+  for (const property in details) {
+    const encodedKey = encodeURIComponent(property);
+    const encodedValue = encodeURIComponent(details[property]);
+    formBody.push(`${encodedKey}=${encodedValue}`);
+  }
+  return formBody.join('&');
 };
 
 const _generateToken = (dataWithPassword) => {
   const dataString = Object.keys(dataWithPassword)
     .sort((a, b) => a.localeCompare(b))
     .map(key => dataWithPassword[key])
-    .reduce((acc, item) => 'acc+item', '');
+    .reduce((acc, item) => `${acc}${item}`, '');
   const hash = crypto
     .createHash('sha256')
     .update(dataString)
@@ -198,21 +286,41 @@ const _generateToken = (dataWithPassword) => {
   return hash;
 };
 
-const generateToken = (data) => {
+const generateTokenEACQ = (data) => {
   const { Receipt, DATA, Shops, ...restData } = data;
   const dataWithPassword = { ...restData, Password: process.env.PAYMENT_EACQ_TERMINAL_PASSWORD };
   return _generateToken(dataWithPassword);
+};
+
+const generateTokenE2C = (data) => {
+  const { Receipt, DATA, ...restData } = data;
+  const dataWithPassword = { ...restData, Password: process.env.PAYMENT_E2C_TERMINAL_PASSWORD };
+  return _generateToken(dataWithPassword);
+};
+
+const tokenizeEACQ = (options) => {
+  return {
+    ...options,
+    Token: generateTokenEACQ(options),
+  };
+};
+
+const tokenizeE2C = (options) => {
+  return {
+    ...options,
+    Token: generateTokenE2C(options),
+  };
 };
 
 const getStateEACQ = async (options) => {
   try {
     const response = await axios({
       method: 'post',
-      url: getUrl('GetState'),
+      url: getUrlEACQ('GetState'),
       data: options,
     });
 
-    const error = getError(response.data.ErrorCode);
+    const error = getErrorEACQ(response.data.ErrorCode);
 
     const d = {
       error,
@@ -240,21 +348,209 @@ const initEACQ = async (options) => {
   try {
     const response = await axios({
       method: 'post',
-      url: getUrl('Init'),
+      url: getUrlEACQ('Init'),
       headers: {
         'Content-Type': 'application/json',
       },
       data: options,
     });
 
-    const error = getError(response.data.ErrorCode);
+    const error = getErrorEACQ(response.data.ErrorCode);
 
     const d = {
       error,
       request: options,
       response: response.data,
     };
-    // debug(d);
+    options?.log && options.log(d);
+
+    return {
+      error,
+      request: options,
+      response: response.data,
+    };
+  } catch (error) {
+    return {
+      error,
+      request: options,
+      response: null,
+    };
+  }
+};
+
+const initE2C = async (options) => {
+  try {
+    const response = await axios({
+      method: 'post',
+      url: getUrlE2C('Init'),
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      data: objectToFormData(options),
+    });
+
+    const error = getErrorE2C(response.data.ErrorCode);
+
+    const d = {
+      error,
+      request: options,
+      response: response.data,
+    };
+    options?.log && options.log(d);
+
+    return {
+      error,
+      request: options,
+      response: response.data,
+    };
+  } catch (e) {
+    console.log(e?.response?.data);
+    console.log(e?.response?.status);
+    console.log(e?.response?.data?.Causes);
+    const error = getError(e?.response?.ErrorCode);
+    return {
+      error,
+      request: options,
+      response: null,
+    };
+  }
+};
+
+const addCardE2C = async (options) => {
+  try {
+    const response = await axios({
+      method: 'post',
+      url: getUrlE2C('AddCard'),
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      data: objectToFormData(options),
+      // headers: {
+      //   'Content-Type': 'application/json',
+      // },
+      // data: options,
+    });
+
+    const error = getErrorE2C(response.data.ErrorCode);
+
+    const d = {
+      error,
+      request: options,
+      response: response.data,
+    };
+    options?.log && options.log(d);
+
+    return {
+      error,
+      request: options,
+      response: response.data,
+    };
+  } catch (e) {
+    console.log(e?.response?.data);
+    console.log(e?.response?.status);
+    console.log(e?.response?.data?.Causes);
+    console.log({e});
+    console.log('ErrorCode', e?.response?.ErrorCode);
+    // const error = getErrorE2C(e?.response?.ErrorCode);
+    console.log(error);
+    return {
+      error,
+      request: options,
+      response: null,
+    };
+  }
+};
+
+const getCardListE2C = async (options) => {
+  try {
+    const response = await axios({
+      method: 'post',
+      url: getUrlE2C('GetCardList'),
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      data: objectToFormData(options),
+    });
+
+    const error = getErrorE2C('0');
+    console.log('error', error);
+    const d = {
+      error,
+      request: options,
+      response: response.data,
+    };
+    options?.log && options.log(d);
+
+    return {
+      error,
+      request: options,
+      response: response.data,
+    };
+  } catch (e) {
+    console.log(e?.response?.data);
+    console.log(e?.response?.status);
+    console.log(e?.response?.data?.Causes);
+    const error = getErrorE2C(e?.response?.ErrorCode);
+    return {
+      error,
+      request: options,
+      response: null,
+    };
+  }
+};
+
+const getStateE2C = async (options) => {
+  try {
+    const response = await axios({
+      method: 'post',
+      url: getUrlE2C('GetState'),
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      data: objectToFormData(options),
+    });
+
+    const error = getErrorE2C(response.data.ErrorCode);
+
+    const d = {
+      error,
+      request: options,
+      response: response.data,
+    };
+    options?.log && options.log(d);
+
+    return {
+      error,
+      request: options,
+      response: response.data,
+    };
+  } catch (error) {
+    return {
+      error,
+      request: options,
+      response: null,
+    };
+  }
+};
+
+const paymentE2C = async (options) => {
+  try {
+    const response = await axios({
+      method: 'post',
+      url: getUrlE2C('Payment'),
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      data: objectToFormData(options),
+    });
+
+    const error = getErrorE2C(response.data.ErrorCode);
+
+    const d = {
+      error,
+      request: options,
+      response: response.data,
+    };
     options?.log && options.log(d);
 
     return {
@@ -345,7 +641,6 @@ const f = async () => {
       },
     ] },
   });
-
   console.log({ packageId });
 
   const { data: [{ id: PSumProvider }] } = await deep.insert({
@@ -358,8 +653,7 @@ const f = async () => {
       string: { data: { value: 'SumProvider' } },
     } },
   });
-
-  console.log({ PSumProvider: PSumProvider });
+  console.log({ PSumProvider });
 
   const { data: [{ id: PTinkoffProvider }] } = await deep.insert({
     type_id: Type,
@@ -371,8 +665,7 @@ const f = async () => {
       string: { data: { value: 'TinkoffProvider' } },
     } },
   });
-
-  console.log({ PTinkoffProvider: PTinkoffProvider });
+  console.log({ PTinkoffProvider });
 
   const { data: [{ id: PPayment }] } = await deep.insert({
     type_id: BasePayment,
@@ -384,8 +677,7 @@ const f = async () => {
       string: { data: { value: 'Payment' } },
     } },
   });
-
-  console.log({ PPayment: PPayment });
+  console.log({ PPayment });
 
   const { data: [{ id: PObject }] } = await deep.insert({
     type_id: BaseObject,
@@ -397,8 +689,7 @@ const f = async () => {
       string: { data: { value: 'Object' } },
     } },
   });
-
-  console.log({ PObject: PObject });
+  console.log({ PObject });
 
   const { data: [{ id: PSum }] } = await deep.insert({
     type_id: BaseSum,
@@ -410,8 +701,7 @@ const f = async () => {
       string: { data: { value: 'Sum' } },
     } },
   });
-
-  console.log({ PSum: PSum });
+  console.log({ PSum });
 
   const { data: [{ id: PPay }] } = await deep.insert({
     type_id: BasePay,
@@ -423,8 +713,7 @@ const f = async () => {
       string: { data: { value: 'Pay' } },
     } },
   });
-
-  console.log({ PPay: PPay });
+  console.log({ PPay });
 
   const { data: [{ id: PUrl }] } = await deep.insert({
     type_id: BaseUrl,
@@ -436,8 +725,7 @@ const f = async () => {
       string: { data: { value: 'Url' } },
     } },
   });
-
-  console.log({ PUrl: PUrl });
+  console.log({ PUrl });
 
   const { data: [{ id: PPayed }] } = await deep.insert({
     type_id: BasePayed,
@@ -449,8 +737,7 @@ const f = async () => {
       string: { data: { value: 'Payed' } },
     } },
   });
-
-  console.log({ PPayed: PPayed });
+  console.log({ PPayed });
 
   const { data: [{ id: PError }] } = await deep.insert({
     type_id: BaseError,
@@ -462,8 +749,19 @@ const f = async () => {
       string: { data: { value: 'Error' } },
     } },
   });
+  console.log({ PError });
 
-  console.log({ PError: PError });
+  const { data: [{ id: PStorageSecurePayReciever }] } = await deep.insert({
+    type_id: Type,
+    from_id: PTinkoffProvider,
+    to_id: User,
+    in: { data: {
+      type_id: Contain,
+      from_id: packageId,
+      string: { data: { value: 'StorageSecurePayReciever' } },
+    } },
+  });
+  console.log({ PStorageSecurePayReciever });
 
   // SEED PROVIDERS
   const { data: [{ id: sumProvider1 }] } = await deep.insert({
@@ -529,17 +827,15 @@ const f = async () => {
     console.log({ payId });
 
     // Вставленные функции нельзя комментировать через //, только через /**/, так как комментируется только 
-    const errorsConverter = JSON.parse('${JSON.stringify(errorsConverter)}');
+    const errorsConverterEACQ = JSON.parse('${JSON.stringify(errorsConverterEACQ)}');
     const delay = ${delay.toString()};
-    const getError = ${getError.toString()};
-    const getUrl = ${getUrl.toString()};
-    const tokenize = ${tokenize.toString()};
+    const getErrorEACQ = ${getErrorEACQ.toString()};
+    const getUrlEACQ = ${getUrlEACQ.toString()};
+    const tokenizeEACQ = ${tokenizeEACQ.toString()};
     const _generateToken = ${_generateToken.toString()};
-    const generateToken = ${generateToken.toString()};
+    const generateTokenEACQ = ${generateTokenEACQ.toString()};
     const initEACQ = ${initEACQ.toString()};
     const packageName = '${packageName}';
-
-    console.log({errorsConverter});
 
     const { data: mp1 }  = await deep.select({
       _by_path_item: { item_id: { _eq: newLink.id }, group_id: { _eq: await deep.id(packageName, 'paymentTree') } },
@@ -596,7 +892,7 @@ const f = async () => {
       // Description: itemName, // TODO: ?
       CustomerKey,
       PayType: 'O',
-      Token: generateToken(noTokenData),
+      Token: generateTokenEACQ(noTokenData),
       SuccessURL: '${process.env.SUCCESS_URL_REDIRECT}',
       FailURL: '${process.env.FAIL_URL_REDIRECT}',
       shops: [{ ShopCode: '481488', Amount: Amount, Fee: 210 }],
@@ -688,11 +984,53 @@ const f = async () => {
 
   // SEED DATA
 
+  
+
+  console.log('Записываем карту в тинькофф');
+  const addCardData = {
+    TerminalKey: process.env.PAYMENT_E2C_TERMINAL_KEY,
+    CheckType: '3DSHOLD',
+    CustomerKey: user1,
+  };
+  console.log({ addCardData });
+
+  const resultCardInit = await addCardE2C(tokenizeE2C(addCardData));
+  console.log({ resultCardInit });
+
+  const browserAddCard = await puppeteer.launch({ headless: true });
+  const pageAddCard = await browserAddCard.newPage();
+  await addCardInBrowser({
+    browser: browserAddCard,
+    page: pageAddCard,
+    url: resultCardInit.response.PaymentURL,
+  });
+
+  console.log('Получаем список карт');
+  const getCardListData = {
+    TerminalKey: process.env.PAYMENT_E2C_TERMINAL_KEY,
+    CustomerKey: user1,
+  };
+  console.log({ getCardListData });
+  const getCardListResult = await getCardListE2C(tokenizeE2C(getCardListData));
+  console.log({getCardListResult});
+
+  const getCardListResultResponse = getCardListResult.response;
+  console.log({ getCardListResultResponse });
+
+  const { data: [{ id: storageSecureReciever1 }] } = await deep.insert({
+    type_id: PStorageSecurePayReciever,
+    from_id: tinkoffProvider1,
+    to_id: user1,
+    object: { data: { value: {
+      CardId: getCardListResultResponse?.[0],
+    } } },
+  });
+  console.log({ storageSecureReciever1 });
+
   const { data: [{ id: payment1 }] } = await deep.insert({
     type_id: PPayment,
   });
-
-  console.log({ payment1: payment1 });
+  console.log({ payment1 });
 
   const { data: [{ id: sum1 }] } = await deep.insert({
     type_id: PSum,
@@ -700,8 +1038,7 @@ const f = async () => {
     to_id: payment1,
     number: { data: { value: 3000 } },
   });
-
-  console.log({ sum1: sum1 });
+  console.log({ sum1 });
 
   const { data: [{ id: pay1 }] } = await deep.insert({
     type_id: PPay,
@@ -710,8 +1047,7 @@ const f = async () => {
     // string: { data: { value: uniqid() } },
     object: { data: { value: { OrderId: uniqid() } } },
   });
-
-  console.log({ pay1: pay1 });
+  console.log({ pay1 });
 
   // up
   // const { data: mp1 }  = await deep.select({
@@ -785,6 +1121,9 @@ const f = async () => {
   const PaymentId = pay1Link?.value?.value?.PaymentId;
   console.log({ PaymentId });
 
+  const OrderId = pay1Link?.value?.value?.OrderId ?? pay1Link?.id;
+  console.log({ OrderId });
+
   const PaymentURL = url1Link?.value?.value;
   console.log({ PaymentURL });
 
@@ -808,6 +1147,40 @@ const f = async () => {
 
   // const getStateEACQResultAfterPayInBrowser = await getStateEACQ(tokenize(newConfirmData));
   // console.log({ getStateEACQResultAfterPayInBrowser });
+
+  // Обратная выплата
+  const initData = {
+    TerminalKey: process.env.PAYMENT_E2C_TERMINAL_KEY,
+    Amount: 3000,
+    OrderId,
+    CardId: getCardListResultResponse?.[0], // TODO: получить из storage
+    Currency: 643,
+    CustomerKey: user1,
+    // StartSpAccumulation: '1N', // https://acdn.tinkoff.ru/static/documents/bezopasnaya_sdelka.pdf#page=20
+    DATA: {
+      t_domestic: 1,
+    },
+  };
+  const initResultE2C = await initE2C(tokenizeE2C(initData));
+  console.log({ initResultE2C });
+  console.log({ initResultE2CDATA: initResultE2C?.request?.DATA });
+
+  const { PaymentId: PaymentIdE2C } = initResultE2C?.response;
+  console.log({ PaymentIdE2C });
+
+  const newGetStateData = {
+    TerminalKey: process.env.PAYMENT_E2C_TERMINAL_KEY,
+    PaymentId: PaymentIdE2C,
+  };
+  const getStateResult = await getStateE2C(tokenizeE2C(newGetStateData));
+  log({ getStateResult });
+
+  const paymentData = {
+    TerminalKey: process.env.PAYMENT_E2C_TERMINAL_KEY,
+    PaymentId: PaymentIdE2C,
+  };
+  const paymentResult = await paymentE2C(tokenizeE2C(paymentData));
+  log({ paymentResult });
 
 };
 
