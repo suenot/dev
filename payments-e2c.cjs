@@ -525,6 +525,9 @@ const f = async () => {
     const axios = require('axios');
     const _ = require('lodash');
 
+    const payId = newLink.id;
+    console.log({ payId });
+
     // Вставленные функции нельзя комментировать через //, только через /**/, так как комментируется только 
     const errorsConverter = JSON.parse('${JSON.stringify(errorsConverter)}');
     const delay = ${delay.toString()};
@@ -554,7 +557,7 @@ const f = async () => {
     const pay1 = _.find(mp1, { type_id: await deep.id(packageName, 'Pay') });
     console.log({ pay1 });
 
-    const OrderId = (pay1?.value?.value ?? pay1.id).toString(); // храним uniqid() в string
+    const OrderId = (pay1?.value?.value?.OrderId ?? pay1.id).toString();
     console.log({ OrderId });
 
     const user1 = newLink.from_id;
@@ -608,10 +611,25 @@ const f = async () => {
     const { data: [{ id: url1 }] } = await deep.insert({
       type_id: PUrl,
       from_id: ${tinkoffProvider1},
-      to_id: newLink.id,
-      object: { data: { value: initResult?.response } },
+      to_id: payId,
+      // object: { data: { value: initResult?.response } },
+      string: { data: { value: initResult?.response?.PaymentURL } },
     });
     console.log({ url1 });
+
+    const { data: [{ id: url1UpdatedId }] } = await deep.update(
+      { link_id: { _eq: payId } },
+      {
+        value: {
+          OrderId: initResult?.response?.OrderId,
+          PaymentId: initResult?.response?.PaymentId,
+        },
+      },
+      {
+        table: 'objects'
+      }
+    );
+    console.log({ url1UpdatedId });
 
     // // TODO: waitUntil пока платеж не будет выполнен, либо истечет время, либо ошибка => insert link
     // // TODO: узнать время ожидания платежа (зависит ли оно от настроек магазина?)
@@ -689,7 +707,8 @@ const f = async () => {
     type_id: PPay,
     from_id: user1,
     to_id: sum1,
-    string: { data: { value: uniqid() } },
+    // string: { data: { value: uniqid() } },
+    object: { data: { value: { OrderId: uniqid() } } },
   });
 
   console.log({ pay1: pay1 });
@@ -743,17 +762,30 @@ const f = async () => {
   await delay(20000); // TODO: waitUntil
 
   // TODO: REVIEW: Феникс реализовал иначен: он пишет в Url только string, а я весь object
-  const { data: [url1] } = await deep.select({
+  const { data: [url1Link] } = await deep.select({
     type_id: PUrl,
     to_id: pay1,
   });
-  console.log( 'url1: ', JSON.stringify(url1, null, 2));
-  console.log({ url1 });
+  // console.log( 'url1Link: ', JSON.stringify(url1Link, null, 2));
+  console.log({ url1Link });
+  console.log({ url1LinkValue: url1Link?.value?.value });
 
-  const PaymentId = url1?.value?.value?.PaymentId;
+  // const PaymentId = url1Link?.value?.value?.PaymentId;
+  // console.log({ PaymentId });
+
+  // const PaymentURL = url1Link?.value?.value?.PaymentURL;
+  // console.log({ PaymentURL });
+
+  const { data: [pay1Link] } = await deep.select({
+    id: pay1,
+  });
+  console.log({ pay1Link });
+  console.log({ pay1LinkValue: pay1Link?.value?.value });
+
+  const PaymentId = pay1Link?.value?.value?.PaymentId;
   console.log({ PaymentId });
 
-  const PaymentURL = url1?.value?.value?.PaymentURL;
+  const PaymentURL = url1Link?.value?.value;
   console.log({ PaymentURL });
 
   // const newConfirmData = {
