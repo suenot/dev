@@ -12,6 +12,8 @@ const uniqid = require('uniqid');
 
 const puppeteer = require('puppeteer');
 
+const PRICE = 3000;
+
 const { generateApolloClient } = require("@deep-foundation/hasura/client");
 const { DeepClient } = require('@deep-foundation/deeplinks/imports/client');
 const { minilinks, Link } = require('@deep-foundation/deeplinks/imports/minilinks');
@@ -767,14 +769,13 @@ const f = async () => {
   const { data: [{ id: sumProvider1 }] } = await deep.insert({
     type_id: PSumProvider,
   });
-
-  console.log({ sumProvider1: sumProvider1 });
+  console.log({ sumProvider1 });
 
   const { data: [{ id: tinkoffProvider1 }] } = await deep.insert({
     type_id: PTinkoffProvider,
   });
-
-  console.log({ tinkoffProvider1: tinkoffProvider1 });
+  const tinkoffProviderId = tinkoffProvider1; // TODO: объединить в одну константу
+  console.log({ tinkoffProvider1 });
  //END SEED PROVIDERS
 
   const { data: [{ id: paymentTree }] } = await deep.insert({
@@ -815,8 +816,8 @@ const f = async () => {
       },
     ]},
   });
-
-  console.log({ paymentTree: paymentTree });
+  console.log({ paymentTree });
+  const paymentTreeId = paymentTree; // TODO: переименовать в paymentTreeId
 
   const payHandlerFn = /*javascript*/`async ({ deep, require, data: { newLink } }) => {
     const crypto = require('crypto');
@@ -862,14 +863,14 @@ const f = async () => {
     const CustomerKey = user1.toString(); // user1
     console.log({ CustomerKey });
 
-    console.log({ NotificationURL: '${process.env.PAYMENT_NOTIFICATION_URL}' });
+    console.log({ NotificationURL: '${process.env.PAYMENT_EACQ_AND_TEST_NOTIFICATION_URL}' });
 
     const noTokenData = {
       TerminalKey: '${process.env.PAYMENT_EACQ_TERMINAL_KEY}',
       Amount,
       Shops: [{ ShopCode: 481488, Amount, Fee: 210 }],
       CustomerKey,
-      NotificationURL: '${process.env.PAYMENT_NOTIFICATION_URL}',
+      NotificationURL: '${process.env.PAYMENT_EACQ_AND_TEST_NOTIFICATION_URL}',
       Receipt: {
         Items: [{
           Name: OrderId,
@@ -944,7 +945,7 @@ const f = async () => {
     // Нужно 
     .replace('process.env.PAYMENT_TEST_TERMINAL_KEY', `'${process.env?.PAYMENT_TEST_TERMINAL_KEY}'`)
     .replace('process.env.PAYMENT_EACQ_TERMINAL_KEY', `'${process.env?.PAYMENT_EACQ_TERMINAL_KEY}'`)
-    .replace('process.env.PAYMENT_NOTIFICATION_URL', `'${process.env?.PAYMENT_NOTIFICATION_URL}'`)
+    .replace('process.env.PAYMENT_EACQ_AND_TEST_NOTIFICATION_URL', `'${process.env?.PAYMENT_EACQ_AND_TEST_NOTIFICATION_URL}'`)
     .replace('process.env.PAYMENT_TEST_PHONE', `'${process.env?.PAYMENT_TEST_PHONE}'`)
     .replace('process.env.PAYMENT_EACQ_TERMINAL_PASSWORD', `'${process.env?.PAYMENT_EACQ_TERMINAL_PASSWORD}'`)
     .replace('process.env.PAYMENT_EACQ_AND_TEST_URL', `'${process.env?.PAYMENT_EACQ_AND_TEST_URL}'`)
@@ -979,8 +980,720 @@ const f = async () => {
       value: payHandlerFn
     } },
   });
-
   console.log({ insertPayHandlerId: insertPayHandlerId });
+
+
+// 	const payInsertHandler = /*javascript*/ `
+// async ({ deep, require, data: { newLink: payLink } }) => {
+//   const crypto = require('crypto');
+//   const axios = require('axios');
+//   const errorsConverter = {
+//     7: 'Покупатель не найден',
+//     53: 'Обратитесь к продавцу',
+//     99: 'Платеж отклонен',
+//     100: 'Повторите попытку позже',
+//     101: 'Не пройдена идентификация 3DS',
+//     102: 'Операция отклонена, пожалуйста обратитесь в интернет-магазин или воспользуйтесь другой картой',
+//     103: 'Повторите попытку позже',
+//     119: 'Превышено кол-во запросов на авторизацию',
+//     191: 'Некорректный статус договора, обратитесь к вашему менеджеру',
+//     1001: 'Свяжитесь с банком, выпустившим карту, чтобы провести платеж',
+//     1003: 'Неверный merchant ID',
+//     1004: 'Карта украдена. Свяжитесь с банком, выпустившим карту',
+//     1005: 'Платеж отклонен банком, выпустившим карту',
+//     1006: 'Свяжитесь с банком, выпустившим карту, чтобы провести платеж',
+//     1007: 'Карта украдена. Свяжитесь с банком, выпустившим карту',
+//     1008: 'Платеж отклонен, необходима идентификация',
+//     1012: 'Такие операции запрещены для этой карты',
+//     1013: 'Повторите попытку позже',
+//     1014: 'Карта недействительна. Свяжитесь с банком, выпустившим карту',
+//     1015: 'Попробуйте снова или свяжитесь с банком, выпустившим карту',
+//     1019: 'Платеж отклонен — попробуйте снова',
+//     1030: 'Повторите попытку позже',
+//     1033: 'Истек срок действия карты. Свяжитесь с банком, выпустившим карту',
+//     1034: 'Попробуйте повторить попытку позже',
+//     1038: 'Превышено количество попыток ввода ПИН-кода',
+//     1039: 'Платеж отклонен — счет не найден',
+//     1041: 'Карта утеряна. Свяжитесь с банком, выпустившим карту',
+//     1043: 'Карта украдена. Свяжитесь с банком, выпустившим карту',
+//     1051: 'Недостаточно средств на карте',
+//     1053: 'Платеж отклонен — счет не найден',
+//     1054: 'Истек срок действия карты',
+//     1055: 'Неверный ПИН',
+//     1057: 'Такие операции запрещены для этой карты',
+//     1058: 'Такие операции запрещены для этой карты',
+//     1059: 'Подозрение в мошенничестве. Свяжитесь с банком, выпустившим карту',
+//     1061: 'Превышен дневной лимит платежей по карте',
+//     1062: 'Платежи по карте ограничены',
+//     1063: 'Операции по карте ограничены',
+//     1064: 'Проверьте сумму',
+//     1065: 'Превышен дневной лимит транзакций',
+//     1075: 'Превышено число попыток ввода ПИН-кода',
+//     1076: 'Платеж отклонен — попробуйте снова',
+//     1077: 'Коды не совпадают — попробуйте снова',
+//     1080: 'Неверный срок действия',
+//     1082: 'Неверный CVV',
+//     1086: 'Платеж отклонен — не получилось подтвердить ПИН-код',
+//     1088: 'Ошибка шифрования. Попробуйте снова',
+//     1089: 'Попробуйте повторить попытку позже',
+//     1091: 'Банк, выпустивший карту недоступен для проведения авторизации',
+//     1092: 'Платеж отклонен — попробуйте снова',
+//     1093: 'Подозрение в мошенничестве. Свяжитесь с банком, выпустившим карту',
+//     1094: 'Системная ошибка',
+//     1096: 'Повторите попытку позже',
+//     9999: 'Внутренняя ошибка системы',
+//   };
+//   const getError = (errorCode) =>
+//   errorCode === '0' ? undefined : errorsConverter[errorCode] || 'broken';
+//   const getUrl = (method) =>
+//   "${process.env.PAYMENT_EACQ_AND_TEST_URL}" + "/" + method;
+//   const _generateToken = (dataWithPassword) => {
+//     const dataString = Object.keys(dataWithPassword)
+//       .sort((a, b) => a.localeCompare(b))
+//       .map((key) => dataWithPassword[key])
+//       .reduce((acc, item) => acc.toString() + item.toString(), '');
+//     const hash = crypto.createHash('sha256').update(dataString).digest('hex');
+//     return hash;
+//   };
+//   const generateToken = (data) => {
+//     const { Receipt, DATA, Shops, ...restData } = data;
+//     const dataWithPassword = {
+//       ...restData,
+//       Password: "${process.env.PAYMENT_EACQ_TERMINAL_PASSWORD}",
+//     };
+//     return _generateToken(dataWithPassword);
+//   }; 
+//   const init = async (options) => {
+//     try {
+//       const response = await axios({
+//         method: 'post',
+//         url: getUrl('Init'),
+//         headers: {
+//           'Content-Type': 'application/json',
+//         },
+//         data: options,
+//       });
+
+//       const error = getError(response.data.ErrorCode);
+
+//       const d = {
+//         error,
+//         request: options,
+//         response: response.data,
+//       };
+
+//       options?.log && options.log(d);
+
+//       return d;
+//     } catch (error) {
+//       return {
+//         error,
+//         request: options,
+//         response: null,
+//       };
+//     }
+//   };
+
+//   const sendInit = async (noTokenData) => {
+//     const options = {
+//       ...noTokenData,
+//       Token: generateToken(noTokenData),
+//     };
+
+//     return init(options);
+//   };
+
+//   const mpDownPay = await deep.select({
+//     down: {
+//       link_id: { _eq: payLink.id },
+//       tree_id: { _eq: ${paymentTreeId} },
+//     },
+//   });
+
+//   console.log({mpDownPay});
+
+//   // const paymentLink = mpDownPay.data.find(link => link.type_id == ${PPayment});
+//   const sum = mpDownPay.data.find(link => link.type_id == ${PSum}).value.value; 
+
+//   // console.log({paymentLink});
+//   console.log({sum});
+
+//   const options = {
+//     TerminalKey: "${process.env.PAYMENT_EACQ_TERMINAL_KEY}",
+//     OrderId: payLink?.value?.value.OrderId ?? payLink.id,
+//     CustomerKey: ${deep.linkId},
+//     NotificationURL: "${process.env.PAYMENT_EACQ_AND_TEST_NOTIFICATION_URL}",
+//     PayType: 'T',
+//     Amount: ${PRICE},
+//     Description: 'Test shopping',
+//     Language: 'ru',
+//     Recurrent: 'Y',
+//     DATA: {
+//       Email: "${process.env.PAYMENT_TEST_EMAIL}",
+//       Phone: "${process.env.PAYMENT_TEST_PHONE}",
+//     },
+//     // Receipt: {
+//     //   Items: [{
+//     //     Name: 'Test item',
+//     //     Price: sum,
+//     //     Quantity: 1,
+//     //     Amount: ${PRICE},
+//     //     PaymentMethod: 'prepayment',
+//     //     PaymentObject: 'service',
+//     //     Tax: 'none',
+//     //   }],
+//     //   Email: "${process.env.PAYMENT_TEST_EMAIL}",
+//     //   Phone: "${process.env.PAYMENT_TEST_PHONE}",
+//     //   Taxation: 'usn_income',
+//     // }
+//   };
+
+//   console.log({options});
+
+//   let initResult = await sendInit({
+//     ...options
+//   });
+
+//   console.log({initResult});
+
+//   if (initResult.error != undefined) {
+//     console.log('initResult.error:', initResult.error);
+//     const {
+//       data: [{ id: error }],
+//     } = await deep.insert({
+//       type_id: ${PError},
+//       from_id: ${tinkoffProviderId},
+//       to_id: payLink.id,
+//       string: { data: { value: initResult.error } },
+//       in: {
+//         data: [
+//           {
+//             type_id: ${Contain},
+//             from_id: ${deep.linkId},
+//           },
+//         ],
+//       },
+//     });
+//     console.log({ error });
+//   } 
+
+// 	console.log('Payment URL:', initResult.response.PaymentURL);
+// 	const {
+// 		data: [{ id: urlId }],
+// 	} = await deep.insert({
+// 		type_id: ${PUrl},
+// 		from_id: ${tinkoffProviderId},
+// 		to_id: payLink.id,
+// 		string: { data: { value: initResult.response.PaymentURL } },
+// 		in: {
+// 			data: [
+// 				{
+// 					type_id: ${Contain},
+// 					from_id: ${deep.linkId},
+// 				},
+// 			],
+// 		},
+// 	});
+// 	console.log({ urlId });
+
+// 	await deep.update(payLink.id, {value: {...payLink.value.value, bankPaymentId: initResult.response.PaymentId}})
+  
+// 	return initResult;
+// };
+// `;
+
+	// const {
+	// 	data: [{ id: payInsertHandlerId }],
+	// } = await deep.insert({
+	// 	type_id: SyncTextFile,
+	// 	in: {
+	// 		data: [
+	// 			{
+	// 				type_id: Contain,
+	// 				from_id: packageId, // before created package
+	// 				string: { data: { value: 'payInsertHandlerFile' } },
+	// 			},
+	// 			{
+	// 				from_id: dockerSupportsJs,
+	// 				type_id: Handler,
+	// 				in: {
+	// 					data: [
+	// 						{
+	// 							type_id: Contain,
+	// 							from_id: packageId, // before created package
+	// 							string: { data: { value: 'payInsertHandler' } },
+	// 						},
+	// 						{
+	// 							type_id: HandleInsert,
+	// 							from_id: PPay,
+	// 							in: {
+	// 								data: [
+	// 									{
+	// 										type_id: Contain,
+	// 										from_id: packageId, // before created package
+	// 										string: { data: { value: 'payInsertHandle' } },
+	// 									},
+	// 								],
+	// 							},
+	// 						},
+	// 					],
+	// 				},
+	// 			},
+	// 		],
+	// 	},
+	// 	string: {
+	// 		data: {
+	// 			value: payInsertHandler,
+	// 		},
+	// 	},
+	// });
+	// console.log({ payInsertHandlerId });
+
+	const cancelledInsertHandler = /*javascript*/ `
+async ({ deep, require, data: { newLink: cancelledLink } }) => {
+  const crypto = require('crypto');
+  const axios = require('axios');
+  const errorsConverter = {
+    7: 'Покупатель не найден',
+    53: 'Обратитесь к продавцу',
+    99: 'Платеж отклонен',
+    100: 'Повторите попытку позже',
+    101: 'Не пройдена идентификация 3DS',
+    102: 'Операция отклонена, пожалуйста обратитесь в интернет-магазин или воспользуйтесь другой картой',
+    103: 'Повторите попытку позже',
+    119: 'Превышено кол-во запросов на авторизацию',
+    191: 'Некорректный статус договора, обратитесь к вашему менеджеру',
+    1001: 'Свяжитесь с банком, выпустившим карту, чтобы провести платеж',
+    1003: 'Неверный merchant ID',
+    1004: 'Карта украдена. Свяжитесь с банком, выпустившим карту',
+    1005: 'Платеж отклонен банком, выпустившим карту',
+    1006: 'Свяжитесь с банком, выпустившим карту, чтобы провести платеж',
+    1007: 'Карта украдена. Свяжитесь с банком, выпустившим карту',
+    1008: 'Платеж отклонен, необходима идентификация',
+    1012: 'Такие операции запрещены для этой карты',
+    1013: 'Повторите попытку позже',
+    1014: 'Карта недействительна. Свяжитесь с банком, выпустившим карту',
+    1015: 'Попробуйте снова или свяжитесь с банком, выпустившим карту',
+    1019: 'Платеж отклонен — попробуйте снова',
+    1030: 'Повторите попытку позже',
+    1033: 'Истек срок действия карты. Свяжитесь с банком, выпустившим карту',
+    1034: 'Попробуйте повторить попытку позже',
+    1038: 'Превышено количество попыток ввода ПИН-кода',
+    1039: 'Платеж отклонен — счет не найден',
+    1041: 'Карта утеряна. Свяжитесь с банком, выпустившим карту',
+    1043: 'Карта украдена. Свяжитесь с банком, выпустившим карту',
+    1051: 'Недостаточно средств на карте',
+    1053: 'Платеж отклонен — счет не найден',
+    1054: 'Истек срок действия карты',
+    1055: 'Неверный ПИН',
+    1057: 'Такие операции запрещены для этой карты',
+    1058: 'Такие операции запрещены для этой карты',
+    1059: 'Подозрение в мошенничестве. Свяжитесь с банком, выпустившим карту',
+    1061: 'Превышен дневной лимит платежей по карте',
+    1062: 'Платежи по карте ограничены',
+    1063: 'Операции по карте ограничены',
+    1064: 'Проверьте сумму',
+    1065: 'Превышен дневной лимит транзакций',
+    1075: 'Превышено число попыток ввода ПИН-кода',
+    1076: 'Платеж отклонен — попробуйте снова',
+    1077: 'Коды не совпадают — попробуйте снова',
+    1080: 'Неверный срок действия',
+    1082: 'Неверный CVV',
+    1086: 'Платеж отклонен — не получилось подтвердить ПИН-код',
+    1088: 'Ошибка шифрования. Попробуйте снова',
+    1089: 'Попробуйте повторить попытку позже',
+    1091: 'Банк, выпустивший карту недоступен для проведения авторизации',
+    1092: 'Платеж отклонен — попробуйте снова',
+    1093: 'Подозрение в мошенничестве. Свяжитесь с банком, выпустившим карту',
+    1094: 'Системная ошибка',
+    1096: 'Повторите попытку позже',
+    9999: 'Внутренняя ошибка системы',
+  };
+  const getError = (errorCode) =>
+  errorCode === '0' ? undefined : errorsConverter[errorCode] || 'broken';
+  const getUrl = (method) =>
+  "${process.env.PAYMENT_EACQ_AND_TEST_URL}" + "/" + method;
+  const _generateToken = (dataWithPassword) => {
+    const dataString = Object.keys(dataWithPassword)
+      .sort((a, b) => a.localeCompare(b))
+      .map((key) => dataWithPassword[key])
+      .reduce((acc, item) => acc.toString() + item.toString(), '');
+    const hash = crypto.createHash('sha256').update(dataString).digest('hex');
+    return hash;
+  };
+  const generateToken = (data) => {
+    const { Receipt, DATA, Shops, ...restData } = data;
+    const dataWithPassword = {
+      ...restData,
+      Password: "${process.env.PAYMENT_TEST_TERMINAL_PASSWORD}",
+    };
+    return _generateToken(dataWithPassword);
+  }; 
+	const cancel = async (options) => {
+		try {
+			const response = await axios({
+				method: 'post',
+				url: getUrl('Cancel'),
+				data: options,
+			});
+
+			const error = getError(response.data.ErrorCode);
+
+			return {
+				error,
+				request: options,
+				response: response.data,
+			};
+		} catch (error) {
+			return {
+				error,
+				request: options,
+				response: null,
+			};
+		}
+	};
+
+	const getPayLink = async (cancelledLink) => {
+		const toLink = await deep.select({
+			id: cancelledLink.to_id
+		});
+		if(toLink.type_id === ${PPay}) {
+			return toLink;
+		} 
+		if (toLink.type_id === ${PPayed}) {
+			return await deep.select({
+				id: toLink.to_id
+			});
+		} 
+	}
+
+	const toLink = await deep.select({
+		id: cancelledLink.to_id
+	});
+
+	const bankPaymentId = (await getPayLink(cancelledLink)).value.value.bankPaymentId;
+
+	const noTokenCancelOptions = {
+		TerminalKey: "${process.env.PAYMENT_TEST_TERMINAL_KEY}",
+		PaymentId: bankPaymentId,
+		Amount: cancelledLink.value.value
+	}
+
+	const cancelOptions = {
+		...noTokenCancelOptions,
+		Token: generateToken(noTokenCancelOptions)
+	}
+
+	const cancelResult = await cancel(cancelOptions);
+
+	if(cancelResult.error) {
+		await deep.insert({
+			type_id: ${PError},
+			from_id: ${tinkoffProviderId},
+			to_id: cancelledLink.id,
+			string: { data: {value: cancelResult.error } }
+		});
+	}
+
+	return cancelResult;
+};
+`;
+
+	const {
+		data: [{ id: cancelledInsertHandlerId }],
+	} = await deep.insert({
+		type_id: SyncTextFile,
+		in: {
+			data: [
+				{
+					type_id: Contain,
+					from_id: packageId, // before created package
+					string: { data: { value: 'cancelledInsertHandlerFile' } },
+				},
+				{
+					from_id: dockerSupportsJs,
+					type_id: Handler,
+					in: {
+						data: [
+							{
+								type_id: Contain,
+								from_id: packageId, // before created package
+								string: { data: { value: 'cancelledInsertHandler' } },
+							},
+							{
+								type_id: HandleInsert,
+								from_id: PPay,
+								in: {
+									data: [
+										{
+											type_id: Contain,
+											from_id: packageId, // before created package
+											string: { data: { value: 'cancelledInsertHandle' } },
+										},
+									],
+								},
+							},
+						],
+					},
+				},
+			],
+		},
+		string: {
+			data: {
+				value: cancelledInsertHandler,
+			},
+		},
+	});
+
+	console.log({ cancelledInsertHandlerId });
+
+
+	const tinkoffNotificationHandler = /*javascript*/`
+  async (
+    req,
+    res,
+    next,
+    { deep, require, gql }
+  ) => {
+    const crypto = require('crypto');
+    const axios = require('axios');
+    console.log('helloSomeText');
+    const errorsConverter = {
+      7: 'Покупатель не найден',
+      53: 'Обратитесь к продавцу',
+      99: 'Платеж отклонен',
+      100: 'Повторите попытку позже',
+      101: 'Не пройдена идентификация 3DS',
+      102: 'Операция отклонена, пожалуйста обратитесь в интернет-магазин или воспользуйтесь другой картой',
+      103: 'Повторите попытку позже',
+      119: 'Превышено кол-во запросов на авторизацию',
+      191: 'Некорректный статус договора, обратитесь к вашему менеджеру',
+      1001: 'Свяжитесь с банком, выпустившим карту, чтобы провести платеж',
+      1003: 'Неверный merchant ID',
+      1004: 'Карта украдена. Свяжитесь с банком, выпустившим карту',
+      1005: 'Платеж отклонен банком, выпустившим карту',
+      1006: 'Свяжитесь с банком, выпустившим карту, чтобы провести платеж',
+      1007: 'Карта украдена. Свяжитесь с банком, выпустившим карту',
+      1008: 'Платеж отклонен, необходима идентификация',
+      1012: 'Такие операции запрещены для этой карты',
+      1013: 'Повторите попытку позже',
+      1014: 'Карта недействительна. Свяжитесь с банком, выпустившим карту',
+      1015: 'Попробуйте снова или свяжитесь с банком, выпустившим карту',
+      1019: 'Платеж отклонен — попробуйте снова',
+      1030: 'Повторите попытку позже',
+      1033: 'Истек срок действия карты. Свяжитесь с банком, выпустившим карту',
+      1034: 'Попробуйте повторить попытку позже',
+      1038: 'Превышено количество попыток ввода ПИН-кода',
+      1039: 'Платеж отклонен — счет не найден',
+      1041: 'Карта утеряна. Свяжитесь с банком, выпустившим карту',
+      1043: 'Карта украдена. Свяжитесь с банком, выпустившим карту',
+      1051: 'Недостаточно средств на карте',
+      1053: 'Платеж отклонен — счет не найден',
+      1054: 'Истек срок действия карты',
+      1055: 'Неверный ПИН',
+      1057: 'Такие операции запрещены для этой карты',
+      1058: 'Такие операции запрещены для этой карты',
+      1059: 'Подозрение в мошенничестве. Свяжитесь с банком, выпустившим карту',
+      1061: 'Превышен дневной лимит платежей по карте',
+      1062: 'Платежи по карте ограничены',
+      1063: 'Операции по карте ограничены',
+      1064: 'Проверьте сумму',
+      1065: 'Превышен дневной лимит транзакций',
+      1075: 'Превышено число попыток ввода ПИН-кода',
+      1076: 'Платеж отклонен — попробуйте снова',
+      1077: 'Коды не совпадают — попробуйте снова',
+      1080: 'Неверный срок действия',
+      1082: 'Неверный CVV',
+      1086: 'Платеж отклонен — не получилось подтвердить ПИН-код',
+      1088: 'Ошибка шифрования. Попробуйте снова',
+      1089: 'Попробуйте повторить попытку позже',
+      1091: 'Банк, выпустивший карту недоступен для проведения авторизации',
+      1092: 'Платеж отклонен — попробуйте снова',
+      1093: 'Подозрение в мошенничестве. Свяжитесь с банком, выпустившим карту',
+      1094: 'Системная ошибка',
+      1096: 'Повторите попытку позже',
+      9999: 'Внутренняя ошибка системы',
+    };
+    const getError = (errorCode) =>
+    errorCode === '0' ? undefined : errorsConverter[errorCode] || 'broken';
+    const getUrl = (method) =>
+    "${process.env.PAYMENT_EACQ_AND_TEST_URL}" + "/" + method;
+    const _generateToken = (dataWithPassword) => {
+      const dataString = Object.keys(dataWithPassword)
+        .sort((a, b) => a.localeCompare(b))
+        .map((key) => dataWithPassword[key])
+        .reduce((acc, item) => acc.toString() + item.toString(), '');
+      console.log({dataWithPassword});
+      console.log({dataString});
+      const hash = crypto.createHash('sha256').update(dataString).digest('hex');
+      console.log({hash});
+      return hash;
+    };
+    const generateToken = (data) => {
+      console.log({data});
+      const { Receipt, DATA, Shops, ...restData } = data;
+      console.log({restData});
+      const dataWithPassword = {
+        ...restData,
+        Password: "${process.env.PAYMENT_EACQ_TERMINAL_PASSWORD}",
+      };
+      console.log({dataWithPassword});
+      return _generateToken(dataWithPassword);
+    }; 
+    const confirm = async (options) => {
+      try {
+        const response = await axios({
+          method: 'post',
+          url: getUrl('Confirm'),
+          data: options,
+        });
+  
+        const error = getError(response.data.ErrorCode);
+  
+        const d = {
+          error,
+          request: options,
+          response: response.data,
+        };
+  
+        return {
+          error,
+          request: options,
+          response: response.data,
+        };
+      } catch (error) {
+        return {
+          error,
+          request: options,
+          response: null,
+        };
+      }
+    };
+    const reqBody = req.body;
+    console.log({reqBody});
+    const status = req.body.Status;
+    console.log({status});
+    if (status == 'AUTHORIZED') {
+      const noTokenConfirmOptions = {
+        TerminalKey: "${process.env.PAYMENT_EACQ_TERMINAL_KEY}",
+        PaymentId: req.body.PaymentId,
+        Amount: req.body.Amount,
+        // Receipt: req.body.Receipt,
+      };
+  
+      const confirmOptions = {
+        ...noTokenConfirmOptions,
+        Token: generateToken(noTokenConfirmOptions)
+      }
+      const confirmResult = await confirm(confirmOptions);
+      console.log({confirmResult});
+    } else if (status == 'CONFIRMED') {
+      const {data: payWithSpecificValueAndFromIdQueryData} = await deep.select({value: req.body.OrderId, type_id: ${PPay}, from_id: req.body.CustomerKey});
+      console.log({payWithSpecificValueAndFromIdQueryData});
+      const {data: payQueryData} = await deep.select({value: req.body.OrderId, type_id: ${PPay}, from_id: req.body.CustomerKey});
+      console.log({payQueryData});
+      const {data: [{id: payId}]} = await deep.select({value: req.body.OrderId, type_id: ${PPay}, from_id: req.body.CustomerKey});
+      const payedInsertData = await deep.insert({
+        type_id: ${PPayed},
+        from_id: ${tinkoffProviderId},
+        to_id: payId,
+        in: {
+          data: [
+            {
+              type_id: ${Contain},
+              from_id: ${deep.linkId},
+            },
+          ],
+        },
+      });
+      console.log({payedInsertData});
+    } 
+    res.send('ok');
+  };
+  `;
+  
+  await deep.insert(
+    {
+      type_id: await deep.id('@deep-foundation/core', 'Port'),
+      number: {
+        data: { value: process.env.PAYMENT_EACQ_AND_TEST_NOTIFICATION_PORT },
+      },
+      in: {
+        data: {
+          type_id: await deep.id('@deep-foundation/core', 'RouterListening'),
+          from: {
+            data: {
+              type_id: await deep.id('@deep-foundation/core', 'Router'),
+              in: {
+                data: {
+                  type_id: await deep.id(
+                    '@deep-foundation/core',
+                    'RouterStringUse'
+                  ),
+                  string: {
+                    data: {
+                      value:
+                        process.env.PAYMENT_EACQ_AND_TEST_NOTIFICATION_ROUTE,
+                    },
+                  },
+                  from: {
+                    data: {
+                      type_id: await deep.id('@deep-foundation/core', 'Route'),
+                      out: {
+                        data: {
+                          type_id: await deep.id(
+                            '@deep-foundation/core',
+                            'HandleRoute'
+                          ),
+                          to: {
+                            data: {
+                              type_id: await deep.id(
+                                '@deep-foundation/core',
+                                'Handler'
+                              ),
+                              from_id: await deep.id(
+                                '@deep-foundation/core',
+                                'dockerSupportsJs'
+                              ),
+                              in: {
+                                data: {
+                                  type_id: Contain,
+                                  // from_id: deep.linkId,
+                                  from_id: await deep.id('deep', 'admin'),
+                                  string: {
+                                    data: {
+                                      value: 'tinkoffNotificationHandler',
+                                    },
+                                  },
+                                },
+                              },
+                              to: {
+                                data: {
+                                  type_id: SyncTextFile,
+                                  string: {
+                                    data: {
+                                      value: tinkoffNotificationHandler,
+                                    },
+                                  },
+                                },
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    {
+      name: 'INSERT_HANDLE_ROUTE_HIERARCHICAL',
+    }
+  );
 
   // SEED DATA
 
@@ -1153,13 +1866,13 @@ const f = async () => {
     TerminalKey: process.env.PAYMENT_E2C_TERMINAL_KEY,
     Amount: 3000,
     OrderId,
-    CardId: getCardListResultResponse?.[0], // TODO: получить из storage
+    CardId: getCardListResultResponse?.[0].CardId, // TODO: получить из storage
     Currency: 643,
     CustomerKey: user1,
     // StartSpAccumulation: '1N', // https://acdn.tinkoff.ru/static/documents/bezopasnaya_sdelka.pdf#page=20
-    DATA: {
-      t_domestic: 1,
-    },
+    // DATA: {
+    //   t_domestic: 1,
+    // },
   };
   const initResultE2C = await initE2C(tokenizeE2C(initData));
   console.log({ initResultE2C });
@@ -1168,19 +1881,21 @@ const f = async () => {
   const { PaymentId: PaymentIdE2C } = initResultE2C?.response;
   console.log({ PaymentIdE2C });
 
-  const newGetStateData = {
-    TerminalKey: process.env.PAYMENT_E2C_TERMINAL_KEY,
-    PaymentId: PaymentIdE2C,
-  };
-  const getStateResult = await getStateE2C(tokenizeE2C(newGetStateData));
-  log({ getStateResult });
+  // const newGetStateData = {
+  //   TerminalKey: process.env.PAYMENT_E2C_TERMINAL_KEY,
+  //   PaymentId: PaymentIdE2C,
+  // };
+  // console.log({ newGetStateData });
 
-  const paymentData = {
-    TerminalKey: process.env.PAYMENT_E2C_TERMINAL_KEY,
-    PaymentId: PaymentIdE2C,
-  };
-  const paymentResult = await paymentE2C(tokenizeE2C(paymentData));
-  log({ paymentResult });
+  // const getStateResult = await getStateE2C(tokenizeE2C(newGetStateData));
+  // console.log({ getStateResult });
+
+  // const paymentData = {
+  //   TerminalKey: process.env.PAYMENT_E2C_TERMINAL_KEY,
+  //   PaymentId: PaymentIdE2C,
+  // };
+  // const paymentResult = await paymentE2C(tokenizeE2C(paymentData));
+  // console.log({ paymentResult });
 
 };
 
