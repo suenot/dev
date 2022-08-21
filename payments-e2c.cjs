@@ -90,93 +90,93 @@ const getError = errorCode => errorCode === '0' ? undefined : (errorsConverter[e
 const getUrl = method => `${process.env.PAYMENT_EACQ_AND_TEST_URL}/${method}`;
 
 const payInBrowser = async ({ page, browser, url }) => {
-	await page.goto(url, { waitUntil: 'networkidle2' });
-	await delay(5000);
-	const oldForm = await page.evaluate(() => {
-		return !!document.querySelector(
-			'input[automation-id="tui-input-card-grouped__card"]'
-		);
-	});
-	if (oldForm) {
-		console.log('OLD FORM!!!!!!!');
-		// Старая форма используется на тестовом сервере
-		const cvc1 = await page.evaluate(() => {
-			return !!document.querySelector(
-				'button[automation-id="pay-card__submit"]'
-			);
-		});
-		if (cvc1) {
-			await page.waitForSelector(
-				'input[automation-id="tui-input-card-grouped__card"]'
-			);
-			await delay(300);
-			await page.type(
-				'input[automation-id="tui-input-card-grouped__card"]',
-				process.env.PAYMENT_TEST_CARD_NUMBER_SUCCESS
-			); // card number
-			await delay(300);
-			await page.keyboard.press('Tab');
-			await delay(300);
-			await page.type(
-				'input[automation-id="tui-input-card-grouped__expire"]',
-				process.env.PAYMENT_TEST_CARD_EXPDATE
-			); // expired date
-			await delay(300);
-			await page.keyboard.press('Tab');
-			await delay(300);
-			await page.type(
-				'input[automation-id="tui-input-card-grouped__cvc"]',
-				process.env.PAYMENT_TEST_CARD_CVC
-			); // CVC code
-			await delay(300);
-			await page.click('button[automation-id="pay-card__submit"]'); // submit button
-		} else {
-			await page.waitForSelector(
-				'input[automation-id="tui-input-card-grouped__card"]'
-			);
-			await delay(300);
-			await page.type(
-				'input[automation-id="tui-input-card-grouped__card"]',
-				process.env.PAYMENT_E2C_CARD_NUMBER_SUCCESS
-			); // card number
-			await delay(300);
-			await page.keyboard.press('Tab');
-			await delay(300);
-			await page.type(
-				'input[automation-id="tui-input-card-grouped__expire"]',
-				process.env.PAYMENT_E2C_CARD_EXPDATE
-			); // expired date
-			await delay(300);
-			await page.keyboard.press('Tab');
-			await delay(300);
-			await page.type(
-				'input[automation-id="tui-input-card-grouped__cvc"]',
-				process.env.PAYMENT_E2C_CARD_CVC
-			); // CVC code
-			await delay(300);
-			await page.click('button[automation-id="pay-wallet__submit"]'); // submit button
-			await delay(300);
-			await page.waitForSelector('input[name="password"]');
-			const code = prompt('enter code ');
-			console.log('code', code);
-			await page.type('input[name="password"]', code);
-			await delay(1000);
-		}
-		// TODO: пока старая форма вызывалась только на тестовой карте, где ввод смс кода не нужен
-		await delay(1000);
-	} else {
-		console.log('NEW FORM!!!!!!!');
-		await page.type('#pan', process.env.PAYMENT_E2C_CARD_NUMBER_SUCCESS); // card number
-		await page.type('#expDate', process.env.PAYMENT_E2C_CARD_EXPDATE); // expired date
-		await page.type('#card_cvc', process.env.PAYMENT_E2C_CARD_CVC); // CVC code
-		await page.click('button[type=submit]'); // submit button
-		await page.waitForSelector('input[name="password"]');
-		const code = prompt('enter code ');
-		console.log('code', code);
-		await page.type('input[name="password"]', code);
-		await delay(3000);
-	}
-	await browser.close();
+  await page.goto(url, { waitUntil: 'networkidle2' });
+  await delay(5000);
+  const oldForm = await page.evaluate(() => {
+    return !!document.querySelector(
+      'input[automation-id="tui-input-card-grouped__card"]'
+    );
+  });
+  if (oldForm) {
+    console.log('OLD FORM!!!!!!!');
+    // Старая форма используется на тестовом сервере
+    const cvc1 = await page.evaluate(() => {
+      return !!document.querySelector(
+        'button[automation-id="pay-card__submit"]'
+      );
+    });
+    if (cvc1) {
+      await page.waitForSelector(
+        'input[automation-id="tui-input-card-grouped__card"]'
+      );
+      await delay(300);
+      await page.type(
+        'input[automation-id="tui-input-card-grouped__card"]',
+        process.env.PAYMENT_TEST_CARD_NUMBER_SUCCESS
+      ); // card number
+      await delay(300);
+      await page.keyboard.press('Tab');
+      await delay(300);
+      await page.type(
+        'input[automation-id="tui-input-card-grouped__expire"]',
+        process.env.PAYMENT_TEST_CARD_EXPDATE
+      ); // expired date
+      await delay(300);
+      await page.keyboard.press('Tab');
+      await delay(300);
+      await page.type(
+        'input[automation-id="tui-input-card-grouped__cvc"]',
+        process.env.PAYMENT_TEST_CARD_CVC
+      ); // CVC code
+      await delay(300);
+      await page.click('button[automation-id="pay-card__submit"]'); // submit button
+    } else {
+      await page.waitForSelector(
+        'input[automation-id="tui-input-card-grouped__card"]'
+      );
+      await delay(300);
+      await page.type(
+        'input[automation-id="tui-input-card-grouped__card"]',
+        process.env.PAYMENT_E2C_CARD_NUMBER_SUCCESS
+      ); // card number
+      await delay(300);
+      await page.keyboard.press('Tab');
+      await delay(300);
+      await page.type(
+        'input[automation-id="tui-input-card-grouped__expire"]',
+        process.env.PAYMENT_E2C_CARD_EXPDATE
+      ); // expired date
+      await delay(300);
+      await page.keyboard.press('Tab');
+      await delay(300);
+      await page.type(
+        'input[automation-id="tui-input-card-grouped__cvc"]',
+        process.env.PAYMENT_E2C_CARD_CVC
+      ); // CVC code
+      await delay(300);
+      await page.click('button[automation-id="pay-wallet__submit"]'); // submit button
+      await delay(300);
+      await page.waitForSelector('input[name="password"]');
+      const code = prompt('enter code ');
+      console.log('code', code);
+      await page.type('input[name="password"]', code);
+      await delay(1000);
+    }
+    // TODO: пока старая форма вызывалась только на тестовой карте, где ввод смс кода не нужен
+    await delay(1000);
+  } else {
+    console.log('NEW FORM!!!!!!!');
+    await page.type('#pan', process.env.PAYMENT_E2C_CARD_NUMBER_SUCCESS); // card number
+    await page.type('#expDate', process.env.PAYMENT_E2C_CARD_EXPDATE); // expired date
+    await page.type('#card_cvc', process.env.PAYMENT_E2C_CARD_CVC); // CVC code
+    await page.click('button[type=submit]'); // submit button
+    await page.waitForSelector('input[name="password"]');
+    const code = prompt('enter code ');
+    console.log('code', code);
+    await page.type('input[name="password"]', code);
+    await delay(3000);
+  }
+  await browser.close();
 };
 
 const tokenize = (options) => {
@@ -282,6 +282,7 @@ const f = async () => {
   const Any = await deep.id('@deep-foundation/core', 'Any');
   const Join = await deep.id('@deep-foundation/core', 'Join');
   const Contain = await deep.id('@deep-foundation/core', 'Contain');
+  console.log({Contain});
   const Value = await deep.id('@deep-foundation/core', 'Value');
   const String = await deep.id('@deep-foundation/core', 'String');
   const Package = await deep.id('@deep-foundation/core', 'Package');
@@ -317,12 +318,12 @@ const f = async () => {
   const packageName = '@deep-foundation/payments-e2c';
 
   const BasePayment = await deep.id('@deep-foundation/payments', 'Payment');
-	const BaseObject = await deep.id('@deep-foundation/payments', 'Object');
-	const BaseSum = await deep.id('@deep-foundation/payments', 'Sum');
-	const BasePay = await deep.id('@deep-foundation/payments', 'Pay');
-	const BaseUrl = await deep.id('@deep-foundation/payments', 'Url');
-	const BasePayed = await deep.id('@deep-foundation/payments', 'Payed');
-	const BaseError = await deep.id('@deep-foundation/payments', 'Error');
+  const BaseObject = await deep.id('@deep-foundation/payments', 'Object');
+  const BaseSum = await deep.id('@deep-foundation/payments', 'Sum');
+  const BasePay = await deep.id('@deep-foundation/payments', 'Pay');
+  const BaseUrl = await deep.id('@deep-foundation/payments', 'Url');
+  const BasePayed = await deep.id('@deep-foundation/payments', 'Payed');
+  const BaseError = await deep.id('@deep-foundation/payments', 'Error');
 
   const { data: [{ id: packageId }] } = await deep.insert({
     type_id: Package,
@@ -514,8 +515,7 @@ const f = async () => {
         type_id: TreeIncludeUp,
         to_id: PUrl,
       },
-    ]
-   },
+    ]},
   });
 
   console.log({ paymentTree: paymentTree });
