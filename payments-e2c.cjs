@@ -199,21 +199,21 @@ const payInBrowser = async ({ page, browser, url }) => {
       await delay(300);
       await page.type(
         'input[automation-id="tui-input-card-grouped__card"]',
-        process.env.PAYMENT_TEST_CARD_NUMBER_SUCCESS
+        process.env.PAYMENT_E2C_CARD_NUMBER_SUCCESS
       ); // card number
       await delay(300);
       await page.keyboard.press('Tab');
       await delay(300);
       await page.type(
         'input[automation-id="tui-input-card-grouped__expire"]',
-        process.env.PAYMENT_TEST_CARD_EXPDATE
+        process.env.PAYMENT_E2C_CARD_EXPDATE
       ); // expired date
       await delay(300);
       await page.keyboard.press('Tab');
       await delay(300);
       await page.type(
         'input[automation-id="tui-input-card-grouped__cvc"]',
-        process.env.PAYMENT_TEST_CARD_CVC
+        process.env.PAYMENT_E2C_CARD_CVC
       ); // CVC code
       await delay(300);
       await page.click('button[automation-id="pay-card__submit"]'); // submit button
@@ -1455,6 +1455,7 @@ async ({ deep, require, data: { newLink: cancelledLink } }) => {
     next,
     { deep, require, gql }
   ) => {
+    console.log('TINKOFF_NOTIFICATION_HANDLER');
     const crypto = require('crypto');
     const axios = require('axios');
     console.log('helloSomeText');
@@ -1696,50 +1697,6 @@ async ({ deep, require, data: { newLink: cancelledLink } }) => {
   );
 
   // SEED DATA
-
-  
-
-  console.log('Записываем карту в тинькофф');
-  const addCardData = {
-    TerminalKey: process.env.PAYMENT_E2C_TERMINAL_KEY,
-    CheckType: '3DSHOLD',
-    CustomerKey: user1,
-  };
-  console.log({ addCardData });
-
-  const resultCardInit = await addCardE2C(tokenizeE2C(addCardData));
-  console.log({ resultCardInit });
-
-  const browserAddCard = await puppeteer.launch({ headless: true });
-  const pageAddCard = await browserAddCard.newPage();
-  await addCardInBrowser({
-    browser: browserAddCard,
-    page: pageAddCard,
-    url: resultCardInit.response.PaymentURL,
-  });
-
-  console.log('Получаем список карт');
-  const getCardListData = {
-    TerminalKey: process.env.PAYMENT_E2C_TERMINAL_KEY,
-    CustomerKey: user1,
-  };
-  console.log({ getCardListData });
-  const getCardListResult = await getCardListE2C(tokenizeE2C(getCardListData));
-  console.log({getCardListResult});
-
-  const getCardListResultResponse = getCardListResult.response;
-  console.log({ getCardListResultResponse });
-
-  const { data: [{ id: storageSecureReciever1 }] } = await deep.insert({
-    type_id: PStorageSecurePayReciever,
-    from_id: tinkoffProvider1,
-    to_id: user1,
-    object: { data: { value: {
-      CardId: getCardListResultResponse?.[0],
-    } } },
-  });
-  console.log({ storageSecureReciever1 });
-
   const { data: [{ id: payment1 }] } = await deep.insert({
     type_id: PPayment,
   });
@@ -1762,68 +1719,18 @@ async ({ deep, require, data: { newLink: cancelledLink } }) => {
   });
   console.log({ pay1 });
 
-  // up
-  // const { data: mp1 }  = await deep.select({
-  //   _by_path_item: { item_id: { _eq: pay1 }, group_id: { _eq: paymentTree } },
-  // })
-
-  // console.log({ mp1: mp1 });
-
-  // // down
-  // const { data: mp2 }  = await deep.select({
-  //   _by_item: { path_item_id: { _eq: pay1 }, group_id: { _eq: paymentTree } },
-  // })
-
-  // console.log({ mp2: mp2 });
-
-  // // down from payment
-  // const { data: mp3 }  = await deep.select({
-  //   _by_item: { path_item_id: { _eq: payment1 }, group_id: { _eq: paymentTree } },
-  // })
-
-  // console.log({ mp3: mp3 });
+  // END SEED DATA
 
 
-
-  // up
-  // const { data: mp4 }  = await deep.select({
-  //   _by_path_item: { item_id: { _eq: pay1 }, group_id: { _eq: paymentTree } },
-  // })
-
-  // console.log({ mp4: mp4 });
-
-  // // down
-  // const { data: mp5 }  = await deep.select({
-  //   _by_item: { path_item_id: { _eq: pay1 }, group_id: { _eq: paymentTree } },
-  // })
-
-  // console.log({ mp5: mp5 });
-
-  // // down from payment
-  // const { data: mp6 }  = await deep.select({
-  //   _by_item: { path_item_id: { _eq: payment1 }, group_id: { _eq: paymentTree } },
-  // })
-  // console.log({ mp6: mp6 });
-
-  // const url1 = _.find(mp5, { type_id: await deep.id(packageName, 'Url') });
-
-
+  // START PAY IN BROWSER
   await delay(20000); // TODO: waitUntil
 
-  // TODO: REVIEW: Феникс реализовал иначен: он пишет в Url только string, а я весь object
   const { data: [url1Link] } = await deep.select({
     type_id: PUrl,
     to_id: pay1,
   });
-  // console.log( 'url1Link: ', JSON.stringify(url1Link, null, 2));
   console.log({ url1Link });
   console.log({ url1LinkValue: url1Link?.value?.value });
-
-  // const PaymentId = url1Link?.value?.value?.PaymentId;
-  // console.log({ PaymentId });
-
-  // const PaymentURL = url1Link?.value?.value?.PaymentURL;
-  // console.log({ PaymentURL });
 
   const { data: [pay1Link] } = await deep.select({
     id: pay1,
@@ -1840,15 +1747,14 @@ async ({ deep, require, data: { newLink: cancelledLink } }) => {
   const PaymentURL = url1Link?.value?.value;
   console.log({ PaymentURL });
 
-  // const newConfirmData = {
-  //   TerminalKey: process.env.PAYMENT_EACQ_TERMINAL_KEY,
-  //   PaymentId: Number(PaymentId),
-  //   Shops: [{ ShopCode: 481488, Amount: 3000, Fee: 210 }],
-  // };
-  // console.log({ newConfirmData });
+  const getStateData = {
+    TerminalKey: process.env.PAYMENT_EACQ_TERMINAL_KEY,
+    PaymentId: Number(PaymentId),
+  };
+  console.log({ getStateData });
 
-  // const getStateEACQResultAfterInit = await getStateEACQ(tokenize(newConfirmData));
-  // console.log({ getStateEACQResultAfterInit });
+  const getStateEACQResultAfterInit = await getStateEACQ(tokenizeEACQ(getStateData));
+  console.log({ getStateEACQResultAfterInit });
   
   const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
@@ -1858,28 +1764,86 @@ async ({ deep, require, data: { newLink: cancelledLink } }) => {
     url: PaymentURL,
   });
 
-  // const getStateEACQResultAfterPayInBrowser = await getStateEACQ(tokenize(newConfirmData));
-  // console.log({ getStateEACQResultAfterPayInBrowser });
-
-  // Обратная выплата
-  const initData = {
-    TerminalKey: process.env.PAYMENT_E2C_TERMINAL_KEY,
-    Amount: 3000,
-    OrderId,
-    CardId: getCardListResultResponse?.[0].CardId, // TODO: получить из storage
-    Currency: 643,
-    CustomerKey: user1,
-    // StartSpAccumulation: '1N', // https://acdn.tinkoff.ru/static/documents/bezopasnaya_sdelka.pdf#page=20
-    // DATA: {
-    //   t_domestic: 1,
-    // },
+  const confirmData = {
+    TerminalKey: process.env.PAYMENT_EACQ_TERMINAL_KEY,
+    PaymentId: Number(PaymentId),
   };
-  const initResultE2C = await initE2C(tokenizeE2C(initData));
-  console.log({ initResultE2C });
-  console.log({ initResultE2CDATA: initResultE2C?.request?.DATA });
+  console.log({ confirmData });
 
-  const { PaymentId: PaymentIdE2C } = initResultE2C?.response;
-  console.log({ PaymentIdE2C });
+  const getStateEACQResultAfterPayInBrowser = await getStateEACQ(tokenizeEACQ(confirmData));
+  console.log({ getStateEACQResultAfterPayInBrowser });
+  // END PAY IN BROWSER
+
+  await delay(20000);
+
+  const getStateEACQResultAfterPayInBrowser2 = await getStateEACQ(tokenizeEACQ(confirmData));
+  console.log({ getStateEACQResultAfterPayInBrowser2 });
+
+ // START CARD ADD
+  // console.log('Записываем карту в тинькофф');
+  // const addCardData = {
+  //   TerminalKey: process.env.PAYMENT_E2C_TERMINAL_KEY,
+  //   CheckType: '3DSHOLD',
+  //   CustomerKey: user1,
+  // };
+  // console.log({ addCardData });
+
+  // const resultCardInit = await addCardE2C(tokenizeE2C(addCardData));
+  // console.log({ resultCardInit });
+
+  // const browserAddCard = await puppeteer.launch({ headless: true });
+  // const pageAddCard = await browserAddCard.newPage();
+  // await addCardInBrowser({
+  //   browser: browserAddCard,
+  //   page: pageAddCard,
+  //   url: resultCardInit.response.PaymentURL,
+  // });
+
+  // console.log('Получаем список карт');
+  // const getCardListData = {
+  //   TerminalKey: process.env.PAYMENT_E2C_TERMINAL_KEY,
+  //   CustomerKey: user1,
+  // };
+  // console.log({ getCardListData });
+  // const getCardListResult = await getCardListE2C(tokenizeE2C(getCardListData));
+  // console.log({getCardListResult});
+
+  // const getCardListResultResponse = getCardListResult.response;
+  // console.log({ getCardListResultResponse });
+
+  // const { data: [{ id: storageSecureReciever1 }] } = await deep.insert({
+  //   type_id: PStorageSecurePayReciever,
+  //   from_id: tinkoffProvider1,
+  //   to_id: user1,
+  //   object: { data: { value: {
+  //     CardId: getCardListResultResponse?.[0],
+  //   } } },
+  // });
+  // console.log({ storageSecureReciever1 });
+
+  // END CARD ADD
+
+
+
+  // // Обратная выплата
+  // const initData = {
+  //   TerminalKey: process.env.PAYMENT_E2C_TERMINAL_KEY,
+  //   Amount: 3000,
+  //   OrderId,
+  //   CardId: getCardListResultResponse?.[0].CardId, // TODO: получить из storage
+  //   Currency: 643,
+  //   CustomerKey: user1,
+  //   // StartSpAccumulation: '1N', // https://acdn.tinkoff.ru/static/documents/bezopasnaya_sdelka.pdf#page=20
+  //   // DATA: {
+  //   //   t_domestic: 1,
+  //   // },
+  // };
+  // const initResultE2C = await initE2C(tokenizeE2C(initData));
+  // console.log({ initResultE2C });
+  // console.log({ initResultE2CDATA: initResultE2C?.request?.DATA });
+
+  // const { PaymentId: PaymentIdE2C } = initResultE2C?.response;
+  // console.log({ PaymentIdE2C });
 
   // const newGetStateData = {
   //   TerminalKey: process.env.PAYMENT_E2C_TERMINAL_KEY,
@@ -1896,6 +1860,9 @@ async ({ deep, require, data: { newLink: cancelledLink } }) => {
   // };
   // const paymentResult = await paymentE2C(tokenizeE2C(paymentData));
   // console.log({ paymentResult });
+
+  // const getStateResult2 = await getStateE2C(tokenizeE2C(newGetStateData));
+  // console.log({ getStateResult2 });
 
 };
 
